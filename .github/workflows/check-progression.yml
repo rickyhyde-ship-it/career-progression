@@ -1,0 +1,24 @@
+name: Check Player Progressions
+
+on:
+  workflow_dispatch:  # Manual trigger button
+  schedule:
+    - cron: '0 10 * * *'  # Daily at 10 AM UTC (10 AM GMT / 11 AM BST)
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm install axios
+      
+      - name: Check progressions
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: node scripts/checkProgressions.js 3
