@@ -5,8 +5,8 @@ import { readFile } from 'fs/promises';
 // ==========================================
 // CONFIGURATION - EDIT THESE VALUES
 // ==========================================
-const THRESHOLD = 5;  // ← Changed from 3 to 5
-const DELAY_MS = 250; // ← Changed from 100 to 250ms
+const THRESHOLD = 5;  // Changed from 3 to 5
+const DELAY_MS = 100; // 1000ms delay between requests
 const COOLDOWN_403_MS = 300000; // 5 minutes cooldown on 403
 const ROTATE_HEADERS_EVERY = 25; // Rotate headers every 25 requests
 // ==========================================
@@ -83,8 +83,15 @@ async function checkClubProgressions(clubId) {
       headers: headers
     });
 
+    // Check if data exists and is an object
+    if (!data || typeof data !== 'object') {
+      clubsChecked++;
+      return;
+    }
+
     for (const [playerId, stats] of Object.entries(data)) {
-      if (stats.overall && stats.overall >= threshold) {
+      // Check if stats and stats.overall exist before comparing
+      if (stats && stats.overall && stats.overall >= threshold) {
         highProgressionPlayers.push({
           playerId: playerId,
           overall: stats.overall,
