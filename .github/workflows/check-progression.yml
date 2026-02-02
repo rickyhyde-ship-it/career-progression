@@ -21,4 +21,4 @@ jobs:
       - name: Check progressions
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: node scripts/checkProgressions.js 3
+        run: node scripts/checkProgressions.js 5
