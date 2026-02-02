@@ -5,8 +5,8 @@ import { readFile } from 'fs/promises';
 // ==========================================
 // CONFIGURATION - EDIT THESE VALUES
 // ==========================================
-const THRESHOLD = 5;  // Changed from 3 to 5
-const DELAY_MS = 100; // 1000ms delay between requests
+const THRESHOLD = 5;  // Only alert on +5 or higher
+const DELAY_MS = 100; // 100ms delay between requests
 const COOLDOWN_403_MS = 300000; // 5 minutes cooldown on 403
 const ROTATE_HEADERS_EVERY = 25; // Rotate headers every 25 requests
 // ==========================================
@@ -14,7 +14,6 @@ const ROTATE_HEADERS_EVERY = 25; // Rotate headers every 25 requests
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 const CLUB_IDS = JSON.parse(await readFile('clubIds.json', 'utf8'));
 
-// Allow command-line override
 const threshold = process.argv[2] ? parseInt(process.argv[2]) : THRESHOLD;
 
 console.log(`🔍 Searching ${CLUB_IDS.length} clubs for players with +${threshold} or higher overall progression...\n`);
@@ -125,21 +124,53 @@ async function sendDiscordAlert(players) {
     return;
   }
 
-  const message = players.length === 1
-    ? `🔥 **High Progression Alert!**\n\nPlayer ${players[0].playerId} gained **+${players[0].overall} overall**\n${players[0].url}`
-    : `🔥 **${players.length} High Progression Players Found!**\n\n` +
-      players.slice(0, 20).map(p => 
-        `• **Player ${p.playerId}**: +${p.overall} overall → ${p.url}`
-      ).join('\n') +
-      (players.length > 20 ? `\n\n...and ${players.length - 20} more` : '');
-
+  // Sort by progression (lowest first: 5, 6, 7, 8...)
+  const sorted = [...players].sort((a, b) => a.overall - b.overall);
+  
+  // Group by progression level
+  const grouped = {};
+  sorted.forEach(p => {
+    if (!grouped[p.overall]) grouped[p.overall] = [];
+    grouped[p.overall].push(p);
+  });
+  
+  const progressionLevels = Object.keys(grouped).sort((a, b) => a - b);
+  
+  // Send summary first
+  const summary = `🔥 **${players.length} High Progression Players Found!**\n\n` +
+    progressionLevels.map(level => `• **+${level} Overall**: ${grouped[level].length} player${grouped[level].length > 1 ? 's' : ''}`).join('\n');
+  
   await fetch(DISCORD_WEBHOOK, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: message })
+    body: JSON.stringify({ content: summary })
   });
   
-  console.log('\n✅ Discord alert sent!');
+  // Wait 1 second to avoid rate limiting
+  await new Promise(r => setTimeout(r, 1000));
+  
+  // Send separate message for each progression level
+  for (const level of progressionLevels) {
+    const playersAtLevel = grouped[level];
+    
+    let message = `**+${level} Overall (${playersAtLevel.length} player${playersAtLevel.length > 1 ? 's' : ''}):**\n\n`;
+    
+    for (const p of playersAtLevel) {
+      // Wrap URL in <> to prevent Discord embeds
+      message += `• Player ${p.playerId} → <${p.url}>\n`;
+    }
+    
+    await fetch(DISCORD_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: message })
+    });
+    
+    // Wait 1 second between messages to avoid Discord rate limiting
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  
+  console.log(`\n✅ Discord alerts sent! (${progressionLevels.length + 1} messages)`);
 }
 
 // Main execution
@@ -165,9 +196,12 @@ console.log(`🔥 High progression players: ${highProgressionPlayers.length}`);
 console.log('='.repeat(50));
 
 if (highProgressionPlayers.length > 0) {
-  console.log('\n📋 Results:');
+  // Sort before displaying
+  highProgressionPlayers.sort((a, b) => a.overall - b.overall);
+  
+  console.log('\n📋 Results (sorted by progression):');
   highProgressionPlayers.forEach(p => {
-    console.log(`   ${p.url} (+${p.overall} overall)`);
+    console.log(`   +${p.overall} → ${p.url}`);
   });
   
   await sendDiscordAlert(highProgressionPlayers);
