@@ -1,0 +1,9 @@
+{
+  "name": "mfl-progression-tracker",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "googleapis": "^144.0.0"
+  }
+}
