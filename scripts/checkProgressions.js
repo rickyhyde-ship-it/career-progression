@@ -1,24 +1,34 @@
 // scripts/checkProgressions.js
 import axios from 'axios';
 import { readFile } from 'fs/promises';
+import { google } from 'googleapis';
 
 // ==========================================
 // CONFIGURATION - EDIT THESE VALUES
 // ==========================================
-const THRESHOLD = 5;  // Only alert on +5 or higher
-const DELAY_MS = 100; // 100ms delay between requests
-const COOLDOWN_403_MS = 300000; // 5 minutes cooldown on 403
-const ROTATE_HEADERS_EVERY = 25; // Rotate headers every 25 requests
+const THRESHOLD = 3;  // Changed to 3+ progression
+const DELAY_MS = 100;
+const COOLDOWN_403_MS = 300000;
+const ROTATE_HEADERS_EVERY = 25;
 // ==========================================
 
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
-const CLUB_IDS = JSON.parse(await readFile('clubIds.json', 'utf8'));
+const GOOGLE_SHEETS_CREDS = process.env.GOOGLE_SHEETS_CREDENTIALS;
+const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
+
+// Load both club ID files and merge them
+const clubIds1 = JSON.parse(await readFile('clubIds.json', 'utf8'));
+const clubIds2JSON = await readFile('3.customization', 'utf8');
+const clubIds2Data = JSON.parse(clubIds2JSON);
+const clubIds2 = clubIds2Data.clubs.map(club => club.id);
+
+// Merge and deduplicate
+const CLUB_IDS = [...new Set([...clubIds1, ...clubIds2])];
 
 const threshold = process.argv[2] ? parseInt(process.argv[2]) : THRESHOLD;
 
 console.log(`🔍 Searching ${CLUB_IDS.length} clubs for players with +${threshold} or higher overall progression...\n`);
 
-// Multiple browser header sets to rotate
 const HEADER_SETS = [
   {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -61,10 +71,49 @@ const highProgressionPlayers = [];
 let clubsChecked = 0;
 let clubsFailed = 0;
 let requestCount = 0;
+let playerDetailsFailed = 0;
 
 function getCurrentHeaders() {
   const index = Math.floor(requestCount / ROTATE_HEADERS_EVERY) % HEADER_SETS.length;
   return HEADER_SETS[index];
+}
+
+async function fetchPlayerDetails(playerId) {
+  try {
+    requestCount++;
+    const headers = getCurrentHeaders();
+    
+    const { data } = await axios.get(
+      `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}`,
+      { headers }
+    );
+    
+    await new Promise(r => setTimeout(r, DELAY_MS));
+    return data;
+  } catch (err) {
+    playerDetailsFailed++;
+    console.error(`⚠️  Failed to fetch details for player ${playerId}: ${err.message}`);
+    return null;
+  }
+}
+
+async function fetchPlayerHistory(playerId) {
+  try {
+    requestCount++;
+    const headers = getCurrentHeaders();
+    
+    const { data } = await axios.get(
+      `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}/experiences/history`,
+      { headers }
+    );
+    
+    await new Promise(r => setTimeout(r, DELAY_MS));
+    return data;
+  } catch (err) {
+    playerDetailsFailed++;
+    console.error(`⚠️  Failed to fetch history for player ${playerId}: ${err.message}`);
+    return null;
+  }
 }
 
 async function checkClubProgressions(clubId) {
@@ -82,23 +131,69 @@ async function checkClubProgressions(clubId) {
       headers: headers
     });
 
-    // Check if data exists and is an object
     if (!data || typeof data !== 'object') {
       clubsChecked++;
       return;
     }
 
     for (const [playerId, stats] of Object.entries(data)) {
-      // Check if stats and stats.overall exist before comparing
       if (stats && stats.overall && stats.overall >= threshold) {
+        console.log(`🔥 Player ${playerId}: +${stats.overall} overall (Club ${clubId}) - fetching details...`);
+        
+        // Fetch detailed player data
+        const playerDetails = await fetchPlayerDetails(playerId);
+        const playerHistory = await fetchPlayerHistory(playerId);
+        
+        if (!playerDetails) {
+          console.log(`   ⚠️  Skipping ${playerId} - failed to fetch details`);
+          continue;
+        }
+        
+        // Extract data from player details
+        const metadata = playerDetails.player?.metadata || {};
+        const listing = playerDetails.listing || {};
+        const owner = playerDetails.player?.ownedBy || {};
+        
+        // Extract history data (first record)
+        let startingAge = null;
+        let startingOverall = null;
+        let seasonsInGame = null;
+        let careerProgression = null;
+        
+        if (playerHistory && Array.isArray(playerHistory) && playerHistory.length > 0) {
+          const firstRecord = playerHistory[0];
+          startingAge = firstRecord.values?.age || null;
+          startingOverall = firstRecord.values?.overall || null;
+          
+          if (startingAge && metadata.age) {
+            seasonsInGame = metadata.age - startingAge;
+          }
+          
+          if (startingOverall && metadata.overall) {
+            careerProgression = metadata.overall - startingOverall;
+          }
+        }
+        
         highProgressionPlayers.push({
           playerId: playerId,
-          overall: stats.overall,
+          seasonProgression: stats.overall,
+          currentOverall: metadata.overall || 'N/A',
+          age: metadata.age || 'N/A',
+          seasonsInGame: seasonsInGame || 'N/A',
+          careerProgression: careerProgression || 'N/A',
+          positions: metadata.positions ? metadata.positions.join(', ') : 'N/A',
+          pace: metadata.pace || 'N/A',
+          shooting: metadata.shooting || 'N/A',
+          passing: metadata.passing || 'N/A',
+          dribbling: metadata.dribbling || 'N/A',
+          defense: metadata.defense || 'N/A',
+          physical: metadata.physical || 'N/A',
+          goalkeeping: metadata.goalkeeping || 'N/A',
+          owner: owner.name || 'N/A',
+          price: listing.price || 'Not Listed',
           clubId: clubId,
-          url: `https://app.playmfl.com/players/${playerId}`,
-          allStats: stats
+          url: `https://app.playmfl.com/players/${playerId}`
         });
-        console.log(`🔥 Player ${playerId}: +${stats.overall} overall (Club ${clubId})`);
       }
     }
     
@@ -106,7 +201,6 @@ async function checkClubProgressions(clubId) {
   } catch (err) {
     clubsFailed++;
     
-    // Special handling for 403 errors
     if (err.response?.status === 403) {
       console.error(`❌ Club ${clubId} failed: Request failed with status code 403`);
       console.log(`⏸️  RATE LIMITED! Cooling down for 5 minutes...`);
@@ -118,59 +212,140 @@ async function checkClubProgressions(clubId) {
   }
 }
 
-async function sendDiscordAlert(players) {
+async function updateGoogleSheet(players) {
+  if (!GOOGLE_SHEETS_CREDS || !GOOGLE_SHEET_ID) {
+    console.log('\n⚠️  Google Sheets not configured. Skipping sheet update.');
+    return { added: 0, updated: 0 };
+  }
+
+  try {
+    const credentials = JSON.parse(GOOGLE_SHEETS_CREDS);
+    const auth = new google.auth.GoogleAuth({
+      credentials: credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+
+    const sheets = google.sheets({ version: 'v4', auth });
+    const today = new Date().toISOString().split('T')[0];
+
+    // Read existing data (columns A-S only)
+    const existingData = await sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEET_ID,
+      range: 'A2:S',
+    });
+
+    const rows = existingData.data.values || [];
+    const playerIndex = {};
+    
+    rows.forEach((row, index) => {
+      const playerId = row[1]; // Column B (Player ID)
+      if (playerId) {
+        playerIndex[playerId] = index + 2;
+      }
+    });
+
+    let addedCount = 0;
+    let updatedCount = 0;
+    const updates = [];
+    const newRows = [];
+
+    for (const player of players) {
+      const rowData = [
+        today,                        // A: Date
+        player.playerId,              // B: Player ID
+        player.seasonProgression,     // C: Season Progression
+        player.currentOverall,        // D: Current Overall
+        player.age,                   // E: Age
+        player.seasonsInGame,         // F: Seasons in Game
+        player.careerProgression,     // G: Career Progression
+        player.positions,             // H: Position
+        player.pace,                  // I: Pace
+        player.shooting,              // J: Shooting
+        player.passing,               // K: Passing
+        player.dribbling,             // L: Dribbling
+        player.defense,               // M: Defense
+        player.physical,              // N: Physical
+        player.goalkeeping,           // O: Goalkeeping
+        player.owner,                 // P: Owner
+        player.price,                 // Q: Price
+        player.clubId,                // R: Club ID
+        player.url                    // S: URL
+      ];
+
+      if (playerIndex[player.playerId]) {
+        // Update existing player (columns C-S, keep original date in A)
+        const rowNumber = playerIndex[player.playerId];
+        updates.push({
+          range: `C${rowNumber}:S${rowNumber}`,
+          values: [rowData.slice(2)] // Skip date and player ID
+        });
+        updatedCount++;
+      } else {
+        // New player
+        newRows.push(rowData);
+        addedCount++;
+      }
+    }
+
+    if (updates.length > 0) {
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: GOOGLE_SHEET_ID,
+        requestBody: {
+          valueInputOption: 'RAW',
+          data: updates
+        }
+      });
+    }
+
+    if (newRows.length > 0) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: GOOGLE_SHEET_ID,
+        range: 'A:S',
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: newRows
+        }
+      });
+    }
+
+    console.log(`\n✅ Google Sheet updated: ${addedCount} added, ${updatedCount} updated`);
+    return { added: addedCount, updated: updatedCount };
+
+  } catch (err) {
+    console.error(`\n❌ Failed to update Google Sheet: ${err.message}`);
+    return { added: 0, updated: 0 };
+  }
+}
+
+async function sendDiscordSummary(players, sheetStats, duration) {
   if (!DISCORD_WEBHOOK) {
     console.log('\n⚠️  No Discord webhook configured. Skipping alert.');
     return;
   }
 
-  // Sort by progression (lowest first: 5, 6, 7, 8...)
-  const sorted = [...players].sort((a, b) => a.overall - b.overall);
-  
-  // Group by progression level
   const grouped = {};
-  sorted.forEach(p => {
-    if (!grouped[p.overall]) grouped[p.overall] = [];
-    grouped[p.overall].push(p);
+  players.forEach(p => {
+    if (!grouped[p.seasonProgression]) grouped[p.seasonProgression] = 0;
+    grouped[p.seasonProgression]++;
   });
-  
+
   const progressionLevels = Object.keys(grouped).sort((a, b) => a - b);
   
-  // Send summary first
-  const summary = `🔥 **${players.length} High Progression Players Found!**\n\n` +
-    progressionLevels.map(level => `• **+${level} Overall**: ${grouped[level].length} player${grouped[level].length > 1 ? 's' : ''}`).join('\n');
-  
+  const summary = `✅ **Progression Check Complete!**\n\n` +
+    `⏱️ Duration: ${duration} minutes\n` +
+    `🔥 Found: ${players.length} high-progression players\n` +
+    `📊 Google Sheet: ${sheetStats.added} new, ${sheetStats.updated} updated\n\n` +
+    `**Breakdown:**\n` +
+    progressionLevels.map(level => `• +${level} Overall: ${grouped[level]} player${grouped[level] > 1 ? 's' : ''}`).join('\n') +
+    `\n\n📋 View full details: [Open Google Sheet](https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID})`;
+
   await fetch(DISCORD_WEBHOOK, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: summary })
   });
   
-  // Wait 1 second to avoid rate limiting
-  await new Promise(r => setTimeout(r, 1000));
-  
-  // Send separate message for each progression level
-  for (const level of progressionLevels) {
-    const playersAtLevel = grouped[level];
-    
-    let message = `**+${level} Overall (${playersAtLevel.length} player${playersAtLevel.length > 1 ? 's' : ''}):**\n\n`;
-    
-    for (const p of playersAtLevel) {
-      // Wrap URL in <> to prevent Discord embeds
-      message += `• Player ${p.playerId} → <${p.url}>\n`;
-    }
-    
-    await fetch(DISCORD_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: message })
-    });
-    
-    // Wait 1 second between messages to avoid Discord rate limiting
-    await new Promise(r => setTimeout(r, 1000));
-  }
-  
-  console.log(`\n✅ Discord alerts sent! (${progressionLevels.length + 1} messages)`);
+  console.log('\n✅ Discord summary sent!');
 }
 
 // Main execution
@@ -180,9 +355,8 @@ for (const clubId of CLUB_IDS) {
   await checkClubProgressions(clubId);
   await new Promise(r => setTimeout(r, DELAY_MS));
   
-  // Progress indicator every 100 clubs
   if (clubsChecked % 100 === 0) {
-    console.log(`📊 Progress: ${clubsChecked}/${CLUB_IDS.length} clubs checked (using header set ${Math.floor(requestCount / ROTATE_HEADERS_EVERY) % HEADER_SETS.length + 1}/${HEADER_SETS.length})...`);
+    console.log(`📊 Progress: ${clubsChecked}/${CLUB_IDS.length} clubs checked (${highProgressionPlayers.length} players found)...`);
   }
 }
 
@@ -192,19 +366,27 @@ console.log('\n' + '='.repeat(50));
 console.log(`✅ Scan complete in ${duration} minutes`);
 console.log(`📊 Clubs checked: ${clubsChecked}`);
 console.log(`❌ Clubs failed: ${clubsFailed}`);
+console.log(`⚠️  Player details failed: ${playerDetailsFailed}`);
 console.log(`🔥 High progression players: ${highProgressionPlayers.length}`);
 console.log('='.repeat(50));
 
 if (highProgressionPlayers.length > 0) {
-  // Sort before displaying
-  highProgressionPlayers.sort((a, b) => a.overall - b.overall);
+  highProgressionPlayers.sort((a, b) => a.seasonProgression - b.seasonProgression);
   
-  console.log('\n📋 Results (sorted by progression):');
-  highProgressionPlayers.forEach(p => {
-    console.log(`   +${p.overall} → ${p.url}`);
-  });
+  console.log('\n📋 Updating Google Sheets...');
+  const sheetStats = await updateGoogleSheet(highProgressionPlayers);
   
-  await sendDiscordAlert(highProgressionPlayers);
+  console.log('\n📋 Sending Discord summary...');
+  await sendDiscordSummary(highProgressionPlayers, sheetStats, duration);
 } else {
   console.log('\nℹ️  No high-progression players found today.');
+  if (DISCORD_WEBHOOK) {
+    await fetch(DISCORD_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        content: `ℹ️ **Progression Check Complete**\n\nNo players with +${threshold} or higher progression found today.` 
+      })
+    });
+  }
 }
