@@ -6,7 +6,7 @@ import { google } from 'googleapis';
 // ==========================================
 // CONFIGURATION - EDIT THESE VALUES
 // ==========================================
-const THRESHOLD = 3;  // Changed to 3+ progression
+const THRESHOLD = 3;
 const DELAY_MS = 100;
 const COOLDOWN_403_MS = 300000;
 const ROTATE_HEADERS_EVERY = 25;
@@ -15,15 +15,7 @@ const ROTATE_HEADERS_EVERY = 25;
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 const GOOGLE_SHEETS_CREDS = process.env.GOOGLE_SHEETS_CREDENTIALS;
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
-
-// Load both club ID files and merge them
-const clubIds1 = JSON.parse(await readFile('clubIds.json', 'utf8'));
-const clubIds2JSON = await readFile('3.customization', 'utf8');
-const clubIds2Data = JSON.parse(clubIds2JSON);
-const clubIds2 = clubIds2Data.clubs.map(club => club.id);
-
-// Merge and deduplicate
-const CLUB_IDS = [...new Set([...clubIds1, ...clubIds2])];
+const CLUB_IDS = JSON.parse(await readFile('clubIds.json', 'utf8'));
 
 const threshold = process.argv[2] ? parseInt(process.argv[2]) : THRESHOLD;
 
@@ -179,8 +171,8 @@ async function checkClubProgressions(clubId) {
           seasonProgression: stats.overall,
           currentOverall: metadata.overall || 'N/A',
           age: metadata.age || 'N/A',
-          seasonsInGame: seasonsInGame || 'N/A',
-          careerProgression: careerProgression || 'N/A',
+          seasonsInGame: seasonsInGame !== null ? seasonsInGame : 'N/A',
+          careerProgression: careerProgression !== null ? careerProgression : 'N/A',
           positions: metadata.positions ? metadata.positions.join(', ') : 'N/A',
           pace: metadata.pace || 'N/A',
           shooting: metadata.shooting || 'N/A',
@@ -273,11 +265,11 @@ async function updateGoogleSheet(players) {
       ];
 
       if (playerIndex[player.playerId]) {
-        // Update existing player (columns C-S, keep original date in A)
+        // Update existing player (columns A-S only)
         const rowNumber = playerIndex[player.playerId];
         updates.push({
-          range: `C${rowNumber}:S${rowNumber}`,
-          values: [rowData.slice(2)] // Skip date and player ID
+          range: `A${rowNumber}:S${rowNumber}`,
+          values: [rowData]
         });
         updatedCount++;
       } else {
@@ -329,7 +321,7 @@ async function sendDiscordSummary(players, sheetStats, duration) {
     grouped[p.seasonProgression]++;
   });
 
-  const progressionLevels = Object.keys(grouped).sort((a, b) => a - b);
+  const progressionLevels = Object.keys(grouped).sort((a, b) => b - a);
   
   const summary = `✅ **Progression Check Complete!**\n\n` +
     `⏱️ Duration: ${duration} minutes\n` +
@@ -371,7 +363,7 @@ console.log(`🔥 High progression players: ${highProgressionPlayers.length}`);
 console.log('='.repeat(50));
 
 if (highProgressionPlayers.length > 0) {
-  highProgressionPlayers.sort((a, b) => a.seasonProgression - b.seasonProgression);
+  highProgressionPlayers.sort((a, b) => b.seasonProgression - a.seasonProgression);
   
   console.log('\n📋 Updating Google Sheets...');
   const sheetStats = await updateGoogleSheet(highProgressionPlayers);
