@@ -7,9 +7,9 @@ import { google } from 'googleapis';
 // CONFIGURATION - EDIT THESE VALUES
 // ==========================================
 const THRESHOLD = 2;
-const DELAY_MS = 100;
-const COOLDOWN_403_MS = 150000;
-const ROTATE_HEADERS_EVERY = 25;
+const DELAY_MS = 100-250;
+const COOLDOWN_403_MS = 300000;
+const ROTATE_HEADERS_EVERY = 5;
 // ==========================================
 
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
