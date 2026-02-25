@@ -8,7 +8,7 @@ import { google } from 'googleapis';
 // ==========================================
 const THRESHOLD = 2;
 const DELAY_MS = 100;
-const COOLDOWN_403_MS = 300000;
+const COOLDOWN_403_MS = 150000;
 const ROTATE_HEADERS_EVERY = 25;
 // ==========================================
 
