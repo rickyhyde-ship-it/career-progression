@@ -1,4 +1,4 @@
-name: Check Progressions - Group 1
+name: Check Player Progressions
 on:
   workflow_dispatch:
   schedule:
@@ -6,6 +6,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,7 +16,6 @@ jobs:
         run: npm install axios googleapis
       - name: Check progressions
         env:
-          CLUB_FILE: clubIds1.json
           DISCORDWEBHOOKURL: ${{ secrets.DISCORDWEBHOOKURL }}
           GOOGLESHEETSCREDENTIALS: ${{ secrets.GOOGLESHEETSCREDENTIALS }}
           GOOGLESHEETID: ${{ secrets.GOOGLESHEETID }}
