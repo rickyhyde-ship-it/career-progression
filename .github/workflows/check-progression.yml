@@ -15,8 +15,8 @@ jobs:
       - name: Install dependencies
         run: npm install axios googleapis
       - name: Check progressions
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORDWEBHOOKURL }}
-          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLESHEETSCREDENTIALS }}
-          GOOGLE_SHEET_ID: ${{ secrets.GOOGLESHEETID }}
-        run: node scripts/checkProgressions.js
+                env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GOOGLE_SHEETS_CREDENTIALS: ${{ secrets.GOOGLE_SHEETS_CREDENTIALS }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+
