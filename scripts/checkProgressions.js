@@ -83,9 +83,15 @@ async function fetchPlayerDetails(playerId) {
     await new Promise(r => setTimeout(r, DELAY_MS));
     return data;
   } catch (err) {
-    playerDetailsFailed++;
-    console.error(`⚠️  Failed to fetch details for player ${playerId}: ${err.message}`);
-    return null;
+  clubsFailed++;
+  if (err.response?.status === 403) {
+    console.error(`Club ${clubId} failed: 403 after ${requestCount} total requests (${clubsChecked} clubs checked)`);
+    console.error(`Time elapsed: ${((Date.now() - startTime) / 1000 / 60).toFixed(1)} minutes`);
+    console.log(`RATE LIMITED! Cooling down...`);
+    await new Promise(r => setTimeout(r, COOLDOWN403MS));
+    console.log(`Cooldown complete, resuming...`);
+  } else {
+    console.error(`Club ${clubId} failed: ${err.message}`);
   }
 }
 
