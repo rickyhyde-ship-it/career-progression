@@ -6,7 +6,7 @@ import { google } from 'googleapis';
 // ==========================================
 // CONFIGURATION - EDIT THESE VALUES
 // ==========================================
-const THRESHOLD = 3;
+const THRESHOLD = 2;
 const DELAY_MS = 100;
 const COOLDOWN_403_MS = 300000;
 const ROTATE_HEADERS_EVERY = 25;
