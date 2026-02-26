@@ -220,6 +220,13 @@ const startTime = Date.now();
 for (const clubId of CLUB_IDS) {
   await checkClubProgressions(clubId);
   await new Promise(r => setTimeout(r, DELAY_MS));
+
+  if (requestCount % 150 === 0 && requestCount > 0) {
+    console.log(`⏸️  Proactive pause at ${requestCount} requests (${clubsChecked} clubs checked)...`);
+    await new Promise(r => setTimeout(r, 30000));
+    console.log(`▶️  Resuming...`);
+  }
+
   if (clubsChecked % 100 === 0) {
     console.log(`📊 Progress: ${clubsChecked}/${CLUB_IDS.length} clubs checked (${highProgressionPlayers.length} players found)...`);
   }
