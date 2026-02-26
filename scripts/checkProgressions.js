@@ -15,7 +15,7 @@ const ROTATE_HEADERS_EVERY = 5;
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 const GOOGLE_SHEETS_CREDS = process.env.GOOGLE_SHEETS_CREDENTIALS;
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
-const CLUBIDS = JSON.parse(await readFile(process.env.CLUB_FILE || 'clubIds.json', 'utf8'));
+const CLUB_IDS = JSON.parse(await readFile(process.env.CLUB_FILE || 'clubIds.json', 'utf8'));
 
 const threshold = process.argv[2] ? parseInt(process.argv[2]) : THRESHOLD;
 
