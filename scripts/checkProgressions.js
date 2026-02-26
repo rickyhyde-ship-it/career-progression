@@ -6,10 +6,10 @@ import { google } from 'googleapis';
 // ==========================================
 // CONFIGURATION - EDIT THESE VALUES
 // ==========================================
-const THRESHOLD = 2;
+const THRESHOLD = 3;
 const DELAY_MS = 100;
 const COOLDOWN_403_MS = 300000;
-const ROTATE_HEADERS_EVERY = 5;
+const ROTATE_HEADERS_EVERY = 25;
 // ==========================================
 
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
@@ -74,24 +74,16 @@ async function fetchPlayerDetails(playerId) {
   try {
     requestCount++;
     const headers = getCurrentHeaders();
-    
     const { data } = await axios.get(
       `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}`,
       { headers }
     );
-    
     await new Promise(r => setTimeout(r, DELAY_MS));
     return data;
   } catch (err) {
-  clubsFailed++;
-  if (err.response?.status === 403) {
-    console.error(`Club ${clubId} failed: 403 after ${requestCount} total requests (${clubsChecked} clubs checked)`);
-    console.error(`Time elapsed: ${((Date.now() - startTime) / 1000 / 60).toFixed(1)} minutes`);
-    console.log(`RATE LIMITED! Cooling down...`);
-    await new Promise(r => setTimeout(r, COOLDOWN403MS));
-    console.log(`Cooldown complete, resuming...`);
-  } else {
-    console.error(`Club ${clubId} failed: ${err.message}`);
+    playerDetailsFailed++;
+    console.error(`⚠️  Failed to fetch details for player ${playerId}: ${err.message}`);
+    return null;
   }
 }
 
@@ -99,12 +91,10 @@ async function fetchPlayerHistory(playerId) {
   try {
     requestCount++;
     const headers = getCurrentHeaders();
-    
     const { data } = await axios.get(
       `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}/experiences/history`,
       { headers }
     );
-    
     await new Promise(r => setTimeout(r, DELAY_MS));
     return data;
   } catch (err) {
@@ -116,92 +106,55 @@ async function fetchPlayerHistory(playerId) {
 
 async function checkClubProgressions(clubId) {
   const url = `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/progressions`;
-  
   try {
     requestCount++;
     const headers = getCurrentHeaders();
-    
     const { data } = await axios.get(url, {
-      params: {
-        clubId: clubId,
-        interval: 'CURRENT_SEASON'
-      },
+      params: { clubId: clubId, interval: 'CURRENT_SEASON' },
       headers: headers
     });
 
-    if (!data || typeof data !== 'object') {
-      clubsChecked++;
-      return;
-    }
+    if (!data || typeof data !== 'object') { clubsChecked++; return; }
 
     for (const [playerId, stats] of Object.entries(data)) {
       if (stats && stats.overall && stats.overall >= threshold) {
         console.log(`🔥 Player ${playerId}: +${stats.overall} overall (Club ${clubId}) - fetching details...`);
-        
-        // Fetch detailed player data
         const playerDetails = await fetchPlayerDetails(playerId);
         const playerHistory = await fetchPlayerHistory(playerId);
-        
-        if (!playerDetails) {
-          console.log(`   ⚠️  Skipping ${playerId} - failed to fetch details`);
-          continue;
-        }
-        
-        // Extract data from player details
+        if (!playerDetails) { console.log(`   ⚠️  Skipping ${playerId} - failed to fetch details`); continue; }
         const metadata = playerDetails.player?.metadata || {};
         const listing = playerDetails.listing || {};
         const owner = playerDetails.player?.ownedBy || {};
-        
-        // Extract history data (first record)
-        let startingAge = null;
-        let startingOverall = null;
-        let seasonsInGame = null;
-        let careerProgression = null;
-        
+        let startingAge = null, startingOverall = null, seasonsInGame = null, careerProgression = null;
         if (playerHistory && Array.isArray(playerHistory) && playerHistory.length > 0) {
           const firstRecord = playerHistory[0];
           startingAge = firstRecord.values?.age || null;
           startingOverall = firstRecord.values?.overall || null;
-          
-          if (startingAge && metadata.age) {
-            seasonsInGame = metadata.age - startingAge;
-          }
-          
-          if (startingOverall && metadata.overall) {
-            careerProgression = metadata.overall - startingOverall;
-          }
+          if (startingAge && metadata.age) seasonsInGame = metadata.age - startingAge;
+          if (startingOverall && metadata.overall) careerProgression = metadata.overall - startingOverall;
         }
-        
         highProgressionPlayers.push({
-          playerId: playerId,
-          seasonProgression: stats.overall,
-          currentOverall: metadata.overall || 'N/A',
-          age: metadata.age || 'N/A',
+          playerId, seasonProgression: stats.overall,
+          currentOverall: metadata.overall || 'N/A', age: metadata.age || 'N/A',
           seasonsInGame: seasonsInGame !== null ? seasonsInGame : 'N/A',
           careerProgression: careerProgression !== null ? careerProgression : 'N/A',
           positions: metadata.positions ? metadata.positions.join(', ') : 'N/A',
-          pace: metadata.pace || 'N/A',
-          shooting: metadata.shooting || 'N/A',
-          passing: metadata.passing || 'N/A',
-          dribbling: metadata.dribbling || 'N/A',
-          defense: metadata.defense || 'N/A',
-          physical: metadata.physical || 'N/A',
-          goalkeeping: metadata.goalkeeping || 'N/A',
-          owner: owner.name || 'N/A',
-          price: listing.price || 'Not Listed',
-          clubId: clubId,
+          pace: metadata.pace || 'N/A', shooting: metadata.shooting || 'N/A',
+          passing: metadata.passing || 'N/A', dribbling: metadata.dribbling || 'N/A',
+          defense: metadata.defense || 'N/A', physical: metadata.physical || 'N/A',
+          goalkeeping: metadata.goalkeeping || 'N/A', owner: owner.name || 'N/A',
+          price: listing.price || 'Not Listed', clubId,
           url: `https://app.playmfl.com/players/${playerId}`
         });
       }
     }
-    
     clubsChecked++;
   } catch (err) {
     clubsFailed++;
-    
     if (err.response?.status === 403) {
-      console.error(`❌ Club ${clubId} failed: Request failed with status code 403`);
-      console.log(`⏸️  RATE LIMITED! Cooling down for 5 minutes...`);
+      console.error(`❌ Club ${clubId} failed: 403 after ${requestCount} total requests (${clubsChecked} clubs checked)`);
+      console.error(`⏱️  Time elapsed: ${((Date.now() - startTime) / 1000 / 60).toFixed(1)} minutes`);
+      console.log(`⏸️  RATE LIMITED! Cooling down...`);
       await new Promise(r => setTimeout(r, COOLDOWN_403_MS));
       console.log(`✅ Cooldown complete, resuming...`);
     } else {
@@ -215,100 +168,32 @@ async function updateGoogleSheet(players) {
     console.log('\n⚠️  Google Sheets not configured. Skipping sheet update.');
     return { added: 0, updated: 0 };
   }
-
   try {
     const credentials = JSON.parse(GOOGLE_SHEETS_CREDS);
-    const auth = new google.auth.GoogleAuth({
-      credentials: credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-
+    const auth = new google.auth.GoogleAuth({ credentials, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
     const sheets = google.sheets({ version: 'v4', auth });
     const today = new Date().toISOString().split('T')[0];
-
-    // Read existing data (columns A-S only)
-    const existingData = await sheets.spreadsheets.values.get({
-      spreadsheetId: GOOGLE_SHEET_ID,
-      range: 'A2:S',
-    });
-
+    const existingData = await sheets.spreadsheets.values.get({ spreadsheetId: GOOGLE_SHEET_ID, range: 'A2:S' });
     const rows = existingData.data.values || [];
     const playerIndex = {};
-    
-    rows.forEach((row, index) => {
-      const playerId = row[1]; // Column B (Player ID)
-      if (playerId) {
-        playerIndex[playerId] = index + 2;
-      }
-    });
-
-    let addedCount = 0;
-    let updatedCount = 0;
-    const updates = [];
-    const newRows = [];
-
+    rows.forEach((row, index) => { if (row[1]) playerIndex[row[1]] = index + 2; });
+    let addedCount = 0, updatedCount = 0;
+    const updates = [], newRows = [];
     for (const player of players) {
-      const rowData = [
-        today,                        // A: Date
-        player.playerId,              // B: Player ID
-        player.seasonProgression,     // C: Season Progression
-        player.currentOverall,        // D: Current Overall
-        player.age,                   // E: Age
-        player.seasonsInGame,         // F: Seasons in Game
-        player.careerProgression,     // G: Career Progression
-        player.positions,             // H: Position
-        player.pace,                  // I: Pace
-        player.shooting,              // J: Shooting
-        player.passing,               // K: Passing
-        player.dribbling,             // L: Dribbling
-        player.defense,               // M: Defense
-        player.physical,              // N: Physical
-        player.goalkeeping,           // O: Goalkeeping
-        player.owner,                 // P: Owner
-        player.price,                 // Q: Price
-        player.clubId,                // R: Club ID
-        player.url                    // S: URL
-      ];
-
+      const rowData = [today, player.playerId, player.seasonProgression, player.currentOverall, player.age,
+        player.seasonsInGame, player.careerProgression, player.positions, player.pace, player.shooting,
+        player.passing, player.dribbling, player.defense, player.physical, player.goalkeeping,
+        player.owner, player.price, player.clubId, player.url];
       if (playerIndex[player.playerId]) {
-        // Update existing player (columns A-S only)
         const rowNumber = playerIndex[player.playerId];
-        updates.push({
-          range: `A${rowNumber}:S${rowNumber}`,
-          values: [rowData]
-        });
+        updates.push({ range: `A${rowNumber}:S${rowNumber}`, values: [rowData] });
         updatedCount++;
-      } else {
-        // New player
-        newRows.push(rowData);
-        addedCount++;
-      }
+      } else { newRows.push(rowData); addedCount++; }
     }
-
-    if (updates.length > 0) {
-      await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: GOOGLE_SHEET_ID,
-        requestBody: {
-          valueInputOption: 'RAW',
-          data: updates
-        }
-      });
-    }
-
-    if (newRows.length > 0) {
-      await sheets.spreadsheets.values.append({
-        spreadsheetId: GOOGLE_SHEET_ID,
-        range: 'A:S',
-        valueInputOption: 'RAW',
-        requestBody: {
-          values: newRows
-        }
-      });
-    }
-
+    if (updates.length > 0) await sheets.spreadsheets.values.batchUpdate({ spreadsheetId: GOOGLE_SHEET_ID, requestBody: { valueInputOption: 'RAW', data: updates } });
+    if (newRows.length > 0) await sheets.spreadsheets.values.append({ spreadsheetId: GOOGLE_SHEET_ID, range: 'A:S', valueInputOption: 'RAW', requestBody: { values: newRows } });
     console.log(`\n✅ Google Sheet updated: ${addedCount} added, ${updatedCount} updated`);
     return { added: addedCount, updated: updatedCount };
-
   } catch (err) {
     console.error(`\n❌ Failed to update Google Sheet: ${err.message}`);
     return { added: 0, updated: 0 };
@@ -316,33 +201,16 @@ async function updateGoogleSheet(players) {
 }
 
 async function sendDiscordSummary(players, sheetStats, duration) {
-  if (!DISCORD_WEBHOOK) {
-    console.log('\n⚠️  No Discord webhook configured. Skipping alert.');
-    return;
-  }
-
+  if (!DISCORD_WEBHOOK) { console.log('\n⚠️  No Discord webhook configured. Skipping alert.'); return; }
   const grouped = {};
-  players.forEach(p => {
-    if (!grouped[p.seasonProgression]) grouped[p.seasonProgression] = 0;
-    grouped[p.seasonProgression]++;
-  });
-
+  players.forEach(p => { if (!grouped[p.seasonProgression]) grouped[p.seasonProgression] = 0; grouped[p.seasonProgression]++; });
   const progressionLevels = Object.keys(grouped).sort((a, b) => b - a);
-  
   const summary = `✅ **Progression Check Complete!**\n\n` +
-    `⏱️ Duration: ${duration} minutes\n` +
-    `🔥 Found: ${players.length} high-progression players\n` +
-    `📊 Google Sheet: ${sheetStats.added} new, ${sheetStats.updated} updated\n\n` +
-    `**Breakdown:**\n` +
+    `⏱️ Duration: ${duration} minutes\n🔥 Found: ${players.length} high-progression players\n` +
+    `📊 Google Sheet: ${sheetStats.added} new, ${sheetStats.updated} updated\n\n**Breakdown:**\n` +
     progressionLevels.map(level => `• +${level} Overall: ${grouped[level]} player${grouped[level] > 1 ? 's' : ''}`).join('\n') +
     `\n\n📋 View full details: [Open Google Sheet](https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID})`;
-
-  await fetch(DISCORD_WEBHOOK, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content: summary })
-  });
-  
+  await fetch(DISCORD_WEBHOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: summary }) });
   console.log('\n✅ Discord summary sent!');
 }
 
@@ -352,14 +220,12 @@ const startTime = Date.now();
 for (const clubId of CLUB_IDS) {
   await checkClubProgressions(clubId);
   await new Promise(r => setTimeout(r, DELAY_MS));
-  
   if (clubsChecked % 100 === 0) {
     console.log(`📊 Progress: ${clubsChecked}/${CLUB_IDS.length} clubs checked (${highProgressionPlayers.length} players found)...`);
   }
 }
 
 const duration = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
-
 console.log('\n' + '='.repeat(50));
 console.log(`✅ Scan complete in ${duration} minutes`);
 console.log(`📊 Clubs checked: ${clubsChecked}`);
@@ -370,10 +236,8 @@ console.log('='.repeat(50));
 
 if (highProgressionPlayers.length > 0) {
   highProgressionPlayers.sort((a, b) => b.seasonProgression - a.seasonProgression);
-  
   console.log('\n📋 Updating Google Sheets...');
   const sheetStats = await updateGoogleSheet(highProgressionPlayers);
-  
   console.log('\n📋 Sending Discord summary...');
   await sendDiscordSummary(highProgressionPlayers, sheetStats, duration);
 } else {
@@ -382,9 +246,7 @@ if (highProgressionPlayers.length > 0) {
     await fetch(DISCORD_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        content: `ℹ️ **Progression Check Complete**\n\nNo players with +${threshold} or higher progression found today.` 
-      })
+      body: JSON.stringify({ content: `ℹ️ **Progression Check Complete**\n\nNo players with +${threshold} or higher progression found today.` })
     });
   }
 }
