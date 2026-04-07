@@ -6,7 +6,7 @@ import { readFile, writeFile, access } from 'fs/promises';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const THRESHOLD = 2;
+const THRESHOLD = 1;
 const DELAY_MS = 50;
 const COOLDOWN_403_MS = 60000;
 const CONCURRENCY = 8;          // simultaneous club requests
