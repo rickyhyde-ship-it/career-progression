@@ -77,6 +77,26 @@ let clubsFailed = 0;
 let requestCount = 0;
 let playerDetailsFailed = 0;
 
+// Shared rate-limit gate — when one worker hits 403, all workers wait
+let rateLimitedUntil = 0;
+
+async function waitIfRateLimited() {
+  const now = Date.now();
+  if (rateLimitedUntil > now) {
+    const wait = rateLimitedUntil - now;
+    console.log(`⏸️  Waiting ${(wait / 1000).toFixed(0)}s for shared cooldown...`);
+    await sleep(wait);
+  }
+}
+
+function triggerRateLimit() {
+  const newUntil = Date.now() + COOLDOWN_403_MS;
+  if (newUntil > rateLimitedUntil) {
+    rateLimitedUntil = newUntil;
+    console.log(`🚫 Rate limit triggered — all workers pausing for ${COOLDOWN_403_MS / 1000}s`);
+  }
+}
+
 // ==========================================
 // HELPERS
 // ==========================================
@@ -182,6 +202,7 @@ async function fetchClubIds() {
 // ==========================================
 
 async function fetchPlayerDetails(playerId) {
+  await waitIfRateLimited();
   requestCount++;
   return withRetry(async () => {
     const { data } = await axios.get(
@@ -194,6 +215,7 @@ async function fetchPlayerDetails(playerId) {
 }
 
 async function fetchPlayerHistory(playerId) {
+  await waitIfRateLimited();
   requestCount++;
   return withRetry(async () => {
     const { data } = await axios.get(
@@ -208,6 +230,8 @@ async function fetchPlayerHistory(playerId) {
 async function checkClubProgressions(clubId) {
   const url = `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/progressions`;
   let data;
+
+  await waitIfRateLimited();
 
   try {
     requestCount++;
@@ -225,15 +249,14 @@ async function checkClubProgressions(clubId) {
     });
     data = response.data;
   } catch (err) {
-    clubsFailed++;
     if (err.response?.status === 403) {
-      console.error(`❌ Club ${clubId} failed: 403 after ${requestCount} total requests (${clubsChecked} clubs checked)`);
+      clubsFailed++;
+      console.error(`❌ Club ${clubId}: 403 after ${requestCount} total requests (${clubsChecked} clubs checked)`);
       console.error(`⏱️  Time elapsed: ${((Date.now() - startTime) / 1000 / 60).toFixed(1)} minutes`);
-      console.log(`⏸️  RATE LIMITED! Cooling down for ${COOLDOWN_403_MS / 1000}s...`);
-      await sleep(COOLDOWN_403_MS);
-      console.log(`✅ Cooldown complete, retrying club ${clubId}...`);
+      triggerRateLimit();
+      await waitIfRateLimited();
 
-      // Retry the club once after cooldown
+      // Retry once after cooldown
       try {
         requestCount++;
         const retry = await axios.get(url, {
@@ -241,12 +264,14 @@ async function checkClubProgressions(clubId) {
           headers: getRandomHeaders()
         });
         data = retry.data;
-        clubsFailed--; // recovered
+        clubsFailed--;
+        console.log(`✅ Club ${clubId} recovered after cooldown`);
       } catch (retryErr) {
         console.error(`❌ Club ${clubId} failed again after cooldown: ${retryErr.message}`);
         return;
       }
     } else {
+      clubsFailed++;
       console.error(`❌ Club ${clubId} failed: ${err.message}`);
       return;
     }
