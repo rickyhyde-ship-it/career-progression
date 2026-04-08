@@ -6,7 +6,7 @@ import { readFile, writeFile, access } from 'fs/promises';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const THRESHOLD = 1;
+const THRESHOLD = 2;
 const DELAY_MS = 50;
 const COOLDOWN_403_MS = 60000;
 const CONCURRENCY = 8;          // simultaneous club requests
@@ -201,30 +201,49 @@ async function fetchClubIds() {
 // API CALLS
 // ==========================================
 
+async function fetchWithRateLimitHandling(url, label) {
+  const MAX_403_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_403_RETRIES; attempt++) {
+    await waitIfRateLimited();
+    requestCount++;
+    try {
+      const { data } = await axios.get(url, { headers: getRandomHeaders() });
+      await sleep(DELAY_MS);
+      return data;
+    } catch (err) {
+      if (err.response?.status === 403) {
+        console.warn(`⚠️  403 on ${label} (attempt ${attempt}/${MAX_403_RETRIES})`);
+        triggerRateLimit();
+        if (attempt === MAX_403_RETRIES) {
+          console.error(`❌ ${label} gave up after ${MAX_403_RETRIES} 403s`);
+          return null;
+        }
+      } else {
+        const backoff = RETRY_BASE_MS * Math.pow(2, attempt - 1);
+        if (attempt === MAX_RETRIES) {
+          console.error(`⚠️  ${label} failed after ${MAX_RETRIES} attempts: ${err.message}`);
+          return null;
+        }
+        console.warn(`⚠️  ${label} attempt ${attempt} failed (${err.message}), retrying in ${backoff}ms...`);
+        await sleep(backoff);
+      }
+    }
+  }
+  return null;
+}
+
 async function fetchPlayerDetails(playerId) {
-  await waitIfRateLimited();
-  requestCount++;
-  return withRetry(async () => {
-    const { data } = await axios.get(
-      `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}`,
-      { headers: getRandomHeaders() }
-    );
-    await sleep(DELAY_MS);
-    return data;
-  }, `player details ${playerId}`);
+  return fetchWithRateLimitHandling(
+    `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}`,
+    `player details ${playerId}`
+  );
 }
 
 async function fetchPlayerHistory(playerId) {
-  await waitIfRateLimited();
-  requestCount++;
-  return withRetry(async () => {
-    const { data } = await axios.get(
-      `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}/experiences/history`,
-      { headers: getRandomHeaders() }
-    );
-    await sleep(DELAY_MS);
-    return data;
-  }, `player history ${playerId}`);
+  return fetchWithRateLimitHandling(
+    `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}/experiences/history`,
+    `player history ${playerId}`
+  );
 }
 
 async function checkClubProgressions(clubId) {
