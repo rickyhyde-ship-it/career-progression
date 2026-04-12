@@ -27,6 +27,7 @@ const LEADERBOARD_URLS = [
   'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=10&sort=nbMflPoints&sortOrder=DESC&limit=20000',
   'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=9&sort=nbMflPoints&sortOrder=DESC&limit=20000',
   'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=8&sort=nbMflPoints&sortOrder=DESC&limit=20000',
+  'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=7&sort=nbMflPoints&sortOrder=DESC&limit=20000',
 ];
 
 const HEADER_SETS = [
