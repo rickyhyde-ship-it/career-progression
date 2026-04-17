@@ -6,9 +6,9 @@ import { execSync } from 'child_process';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const DELAY_MS = 300;
+const DELAY_MS = 500;
 const COOLDOWN_403_MS = 90000;
-const CONCURRENCY = 2;
+const CONCURRENCY = 1;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1000;
 const PROACTIVE_PAUSE_EVERY = 100;
