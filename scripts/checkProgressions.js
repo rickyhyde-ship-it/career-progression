@@ -6,9 +6,9 @@ import { execSync } from 'child_process';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const DELAY_MS = 200;
+const DELAY_MS = 300;
 const COOLDOWN_403_MS = 90000;
-const CONCURRENCY = 4;
+const CONCURRENCY = 2;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1000;
 const PROACTIVE_PAUSE_EVERY = 100;
@@ -317,10 +317,8 @@ async function processClub(clubId, totalClubs) {
     if (seenPlayerIds.has(playerId)) continue;
     seenPlayerIds.add(playerId);
 
-    const [playerDetails, playerHistory] = await Promise.all([
-      fetchPlayerDetails(playerId),
-      fetchPlayerHistory(playerId)
-    ]);
+    const playerDetails = await fetchPlayerDetails(playerId);
+    const playerHistory = await fetchPlayerHistory(playerId);
 
     if (!playerDetails) {
       playerDetailsFailed++;
