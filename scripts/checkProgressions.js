@@ -6,13 +6,13 @@ import { execSync } from 'child_process';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const DELAY_MS = 50;
-const COOLDOWN_403_MS = 60000;
-const CONCURRENCY = 8;
+const DELAY_MS = 200;
+const COOLDOWN_403_MS = 90000;
+const CONCURRENCY = 4;
 const MAX_RETRIES = 3;
-const RETRY_BASE_MS = 500;
-const PROACTIVE_PAUSE_EVERY = 150;
-const PROACTIVE_PAUSE_MS = 30000;
+const RETRY_BASE_MS = 1000;
+const PROACTIVE_PAUSE_EVERY = 100;
+const PROACTIVE_PAUSE_MS = 45000;
 const CHECKPOINT_FILE = '.progression-checkpoint.json';
 const GH_PAGES_DIR = './gh-pages';
 const PROGRESS_EVERY = 200;
@@ -153,14 +153,23 @@ async function clearCheckpoint() {
 
 function gitPushGhPages(message) {
   try {
-    execSync(
-      `git -C ${GH_PAGES_DIR} add -A && git -C ${GH_PAGES_DIR} commit -m "${message}" && git -C ${GH_PAGES_DIR} push origin gh-pages`,
-      { stdio: 'pipe' }
-    );
+    execSync(`git -C ${GH_PAGES_DIR} add -A`, { stdio: 'pipe' });
   } catch (err) {
-    if (!err.stderr?.toString().includes('nothing to commit')) {
-      console.warn(`⚠️  git push warning: ${err.message}`);
-    }
+    console.warn(`⚠️  git add failed: ${err.stderr?.toString() ?? err.message}`);
+    return;
+  }
+  try {
+    execSync(`git -C ${GH_PAGES_DIR} commit -m "${message}"`, { stdio: 'pipe' });
+  } catch (err) {
+    const out = (err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? '');
+    if (out.includes('nothing to commit')) return;
+    console.warn(`⚠️  git commit failed: ${out || err.message}`);
+    return;
+  }
+  try {
+    execSync(`git -C ${GH_PAGES_DIR} push origin gh-pages`, { stdio: 'pipe' });
+  } catch (err) {
+    console.warn(`⚠️  git push failed: ${err.stderr?.toString() ?? err.message}`);
   }
 }
 
