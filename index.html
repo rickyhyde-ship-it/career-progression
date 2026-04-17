@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MFL Progression Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      padding: 24px 20px;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .header h1 { color: #58a6ff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+    .header .subtitle { color: #8b949e; font-size: 13px; margin-top: 3px; }
+    .header .last-updated { color: #8b949e; font-size: 12px; text-align: right; }
+    .header .last-updated span { color: #e6edf3; }
+
+    #progress-section {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      display: none;
+    }
+    #progress-section.visible { display: block; }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .progress-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .pulse {
+      width: 8px;
+      height: 8px;
+      background: #3fb950;
+      border-radius: 50%;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.85)} }
+    .progress-eta { color: #8b949e; font-size: 13px; }
+    .progress-eta span { color: #e6edf3; }
+    .progress-track {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .progress-bar-bg {
+      flex: 1;
+      background: #21262d;
+      border-radius: 4px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      background: linear-gradient(90deg, #238636, #3fb950);
+      height: 10px;
+      border-radius: 4px;
+      transition: width 0.6s ease;
+      width: 0%;
+    }
+    .progress-count { color: #8b949e; font-size: 12px; white-space: nowrap; }
+    .progress-pct { color: #3fb950; font-weight: 700; font-size: 13px; min-width: 38px; text-align: right; }
+
+    #empty-state {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 48px 24px;
+      text-align: center;
+      color: #8b949e;
+      display: none;
+    }
+    #empty-state.visible { display: block; }
+    #empty-state h2 { color: #e6edf3; margin-bottom: 8px; font-size: 16px; }
+
+    #filter-section {
+      display: none;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    #filter-section.visible { display: flex; }
+
+    select, input[type="text"] {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    select:focus, input[type="text"]:focus { border-color: #58a6ff; }
+    #search-input { flex: 1; min-width: 180px; }
+
+    #table-section { display: none; }
+    #table-section.visible { display: block; }
+
+    .table-wrapper {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead th {
+      background: #0d1117;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #8b949e;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 2px solid #30363d;
+      transition: color 0.15s;
+    }
+    thead th:hover { color: #e6edf3; }
+    thead th.sort-active { color: #58a6ff; }
+    thead th.sort-asc::after { content: ' ↑'; }
+    thead th.sort-desc::after { content: ' ↓'; }
+
+    tbody tr { border-bottom: 1px solid #21262d; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:nth-child(odd) { background: #161b22; }
+    tbody tr:nth-child(even) { background: #0d1117; }
+    tbody tr:hover { background: #1c2128; }
+
+    td {
+      padding: 6px 10px;
+      white-space: nowrap;
+      color: #e6edf3;
+    }
+
+    .td-pos { color: #79c0ff; font-weight: 600; font-size: 11px; }
+    .td-muted { color: #8b949e; }
+    .td-gain { color: #3fb950; font-weight: 500; }
+    .td-gain-zero { color: #8b949e; }
+    .td-total { color: #3fb950; font-weight: 700; }
+
+    .footer {
+      margin-top: 10px;
+      color: #8b949e;
+      font-size: 12px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div>
+      <h1>MFL Progression Tracker</h1>
+      <div class="subtitle">Divisions 1–5 · Career progression</div>
+    </div>
+    <div class="last-updated" id="last-updated" style="display:none">
+      Last updated<br><span id="last-updated-time"></span>
+    </div>
+  </div>
+
+  <div id="progress-section">
+    <div class="progress-header">
+      <div class="progress-label">
+        <div class="pulse"></div>
+        Scanning in progress
+      </div>
+      <div class="progress-eta">ETA: <span id="eta-value">—</span></div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <div class="progress-count" id="progress-count">0 / 0</div>
+      <div class="progress-pct" id="progress-pct">0%</div>
+    </div>
+  </div>
+
+  <div id="empty-state">
+    <h2>No scan data yet</h2>
+    <p>Trigger the GitHub Action to start a scan.</p>
+  </div>
+
+  <div id="filter-section">
+    <select id="filter-div">
+      <option value="">All Divisions</option>
+      <option value="1">D1</option>
+      <option value="2">D2</option>
+      <option value="3">D3</option>
+      <option value="4">D4</option>
+      <option value="5">D5</option>
+    </select>
+    <select id="filter-pos">
+      <option value="">All Positions</option>
+      <option value="GK">GK</option>
+      <option value="DEF">DEF</option>
+      <option value="MID">MID</option>
+      <option value="ATT">ATT</option>
+    </select>
+    <select id="filter-ovr">
+      <option value="0">Min Career +OVR: Any</option>
+      <option value="3">+3</option>
+      <option value="5">+5</option>
+      <option value="10">+10</option>
+      <option value="15">+15</option>
+    </select>
+    <input type="text" id="search-input" placeholder="🔍  Search player...">
+  </div>
+
+  <div id="table-section">
+    <div class="table-wrapper">
+      <table id="data-table">
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div class="footer" id="footer"></div>
+  </div>
+
+</div>
+
+<script>
+  let allData = [];
+  let maxSeasons = 0;
+  let sortCol = 'total';
+  let sortDir = 'desc';
+  let pollInterval = null;
+
+  async function init() {
+    try {
+      const res = await fetch('progress.json?_=' + Date.now());
+      if (res.ok) {
+        const prog = await res.json();
+        if (prog.running) {
+          showProgress(prog);
+          pollInterval = setInterval(pollProgress, 3000);
+          return;
+        }
+      }
+    } catch { /* no progress.json */ }
+    loadData();
+  }
+
+  async function pollProgress() {
+    try {
+      const res = await fetch('progress.json?_=' + Date.now());
+      if (res.ok) {
+        showProgress(await res.json());
+        return;
+      }
+    } catch { /* ignore */ }
+    clearInterval(pollInterval);
+    pollInterval = null;
+    document.getElementById('progress-section').classList.remove('visible');
+    loadData();
+  }
+
+  async function loadData() {
+    try {
+      const res = await fetch('data.json?_=' + Date.now());
+      if (!res.ok) throw new Error('not found');
+      const json = await res.json();
+      allData = json.players ?? [];
+
+      if (json.updatedAt) {
+        const dt = new Date(json.updatedAt);
+        document.getElementById('last-updated-time').textContent =
+          dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
+          ' ' + dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('last-updated').style.display = 'block';
+      }
+
+      maxSeasons = Math.max(0, ...allData.map(p => p.seasons?.length ?? 0));
+      buildTable();
+      document.getElementById('filter-section').classList.add('visible');
+      document.getElementById('table-section').classList.add('visible');
+    } catch {
+      document.getElementById('empty-state').classList.add('visible');
+    }
+  }
+
+  function showProgress(prog) {
+    document.getElementById('progress-section').classList.add('visible');
+    const pct = prog.total > 0 ? Math.round((prog.scanned / prog.total) * 100) : 0;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-count').textContent =
+      prog.scanned.toLocaleString() + ' / ' + prog.total.toLocaleString();
+    document.getElementById('progress-pct').textContent = pct + '%';
+    if (prog.etaSeconds > 0) {
+      const m = Math.floor(prog.etaSeconds / 60);
+      const s = prog.etaSeconds % 60;
+      document.getElementById('eta-value').textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+    } else {
+      document.getElementById('eta-value').textContent = '—';
+    }
+  }
+
+  function buildTable() {
+    buildHeader();
+    renderRows();
+  }
+
+  function buildHeader() {
+    const fixedCols = [
+      { key: 'position',   label: 'POS' },
+      { key: 'age',        label: 'AGE' },
+      { key: 'name',       label: 'PLAYER' },
+      { key: 'division',   label: 'DIV' },
+      { key: 'startOvr',   label: 'START' },
+      { key: 'currentOvr', label: 'OVR' },
+    ];
+
+    let html = '<tr>';
+    for (const col of fixedCols) html += thHtml(col.key, col.label);
+    for (let i = 0; i < maxSeasons; i++) html += thHtml(`s${i}`, `S${i + 1}`);
+    html += thHtml('total', 'TOTAL');
+    html += '</tr>';
+    document.getElementById('table-head').innerHTML = html;
+
+    document.querySelectorAll('#table-head th').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.dataset.col;
+        sortDir = sortCol === key ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc';
+        sortCol = key;
+        updateSortClasses();
+        renderRows();
+      });
+    });
+
+    updateSortClasses();
+  }
+
+  function thHtml(key, label) {
+    return `<th data-col="${key}">${label}</th>`;
+  }
+
+  function updateSortClasses() {
+    document.querySelectorAll('#table-head th').forEach(th => {
+      th.classList.remove('sort-active', 'sort-asc', 'sort-desc');
+      if (th.dataset.col === sortCol) {
+        th.classList.add('sort-active', sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+    });
+  }
+
+  function getFilteredData() {
+    const divFilter = document.getElementById('filter-div').value;
+    const posFilter = document.getElementById('filter-pos').value;
+    const minOvr    = parseInt(document.getElementById('filter-ovr').value) || 0;
+    const search    = document.getElementById('search-input').value.toLowerCase().trim();
+
+    return allData.filter(p => {
+      if (divFilter && String(p.division) !== divFilter) return false;
+      if (posFilter && p.position !== posFilter) return false;
+      if (minOvr > 0 && (p.total ?? 0) < minOvr) return false;
+      if (search && !(p.name ?? '').toLowerCase().includes(search)) return false;
+      return true;
+    });
+  }
+
+  function getSortValue(p, col) {
+    if (col.startsWith('s')) return p.seasons?.[parseInt(col.slice(1))] ?? -Infinity;
+    return p[col] ?? '';
+  }
+
+  function renderRows() {
+    const filtered = getFilteredData();
+    filtered.sort((a, b) => {
+      const av = getSortValue(a, sortCol);
+      const bv = getSortValue(b, sortCol);
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    document.getElementById('table-body').innerHTML = filtered.map(p => {
+      const seasonCells = Array.from({ length: maxSeasons }, (_, i) => {
+        const gain = p.seasons?.[i];
+        if (gain == null) return `<td class="td-muted">—</td>`;
+        if (gain === 0)   return `<td class="td-gain-zero">+0</td>`;
+        return `<td class="td-gain">${gain > 0 ? '+' : ''}${gain}</td>`;
+      }).join('');
+
+      const total = p.total ?? 0;
+      return `<tr>
+        <td class="td-pos">${p.position ?? 'N/A'}</td>
+        <td class="td-muted">${p.age ?? '—'}</td>
+        <td>${p.name ?? '—'}</td>
+        <td class="td-muted">${p.division ? 'D' + p.division : '—'}</td>
+        <td class="td-muted">${p.startOvr ?? '—'}</td>
+        <td>${p.currentOvr ?? '—'}</td>
+        ${seasonCells}
+        <td class="td-total">${total >= 0 ? '+' : ''}${total}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('footer').textContent =
+      `Showing ${filtered.length.toLocaleString()} of ${allData.length.toLocaleString()} players`;
+  }
+
+  ['filter-div', 'filter-pos', 'filter-ovr', 'search-input'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderRows);
+  });
+
+  init();
+</script>
+</body>
+</html>
