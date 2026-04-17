@@ -253,6 +253,15 @@
 </div>
 
 <script>
+  function esc(v) {
+    if (v == null) return '';
+    return String(v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   let allData = [];
   let maxSeasons = 0;
   let sortCol = 'total';
@@ -278,8 +287,11 @@
     try {
       const res = await fetch('progress.json?_=' + Date.now());
       if (res.ok) {
-        showProgress(await res.json());
-        return;
+        const prog = await res.json();
+        if (prog.running) {
+          showProgress(prog);
+          return;
+        }
       }
     } catch { /* ignore */ }
     clearInterval(pollInterval);
@@ -416,14 +428,14 @@
 
       const total = p.total ?? 0;
       return `<tr>
-        <td class="td-pos">${p.position ?? 'N/A'}</td>
-        <td class="td-muted">${p.age ?? '—'}</td>
-        <td>${p.name ?? '—'}</td>
-        <td class="td-muted">${p.division ? 'D' + p.division : '—'}</td>
-        <td class="td-muted">${p.startOvr ?? '—'}</td>
-        <td>${p.currentOvr ?? '—'}</td>
+        <td class="td-pos">${esc(p.position) || 'N/A'}</td>
+        <td class="td-muted">${esc(p.age) || '—'}</td>
+        <td>${esc(p.name) || '—'}</td>
+        <td class="td-muted">${p.division ? 'D' + esc(p.division) : '—'}</td>
+        <td class="td-muted">${esc(p.startOvr) || '—'}</td>
+        <td>${esc(p.currentOvr) || '—'}</td>
         ${seasonCells}
-        <td class="td-total">${total >= 0 ? '+' : ''}${total}</td>
+        <td class="td-total">${total >= 0 ? '+' : ''}${esc(total)}</td>
       </tr>`;
     }).join('');
 
