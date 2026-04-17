@@ -293,7 +293,7 @@ function computeSeasons(playerHistory, currentOvr) {
 // ==========================================
 
 async function processClub(clubId, totalClubs) {
-  const progressionsUrl = `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/progressions?clubId=${clubId}`;
+  const progressionsUrl = `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/progressions?clubId=${clubId}&interval=CURRENT_SEASON`;
   const data = await fetchWithRateLimitHandling(progressionsUrl, `club ${clubId}`);
 
   if (!data) {
