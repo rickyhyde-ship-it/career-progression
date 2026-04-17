@@ -1,6 +1,6 @@
 // scripts/checkProgressions.js
 import axios from 'axios';
-import { readFile, writeFile, access } from 'fs/promises';
+import { readFile, writeFile, access, unlink } from 'fs/promises';
 import { execSync } from 'child_process';
 
 // ==========================================
@@ -144,7 +144,7 @@ async function saveCheckpoint(completedIds, players) {
 }
 
 async function clearCheckpoint() {
-  try { await writeFile(CHECKPOINT_FILE, '{}', 'utf8'); } catch { /* ignore */ }
+  try { await unlink(CHECKPOINT_FILE); } catch { /* ignore if not found */ }
 }
 
 // ==========================================
@@ -201,7 +201,7 @@ async function fetchWithRateLimitHandling(url, label) {
     }
 
     try {
-      const { data } = await axios.get(url, { headers: getRandomHeaders() });
+      const { data } = await axios.get(url, { headers: getRandomHeaders(), timeout: 30000 });
       await sleep(DELAY_MS);
       return data;
     } catch (err) {
@@ -214,8 +214,8 @@ async function fetchWithRateLimitHandling(url, label) {
         }
       } else {
         const backoff = RETRY_BASE_MS * Math.pow(2, attempt - 1);
-        if (attempt === MAX_RETRIES) {
-          console.error(`⚠️  ${label} failed after ${MAX_RETRIES} attempts: ${err.message}`);
+        if (attempt === MAX_403_RETRIES) {
+          console.error(`⚠️  ${label} failed after ${MAX_403_RETRIES} attempts: ${err.message}`);
           return null;
         }
         console.warn(`⚠️  ${label} attempt ${attempt} failed (${err.message}), retrying in ${backoff}ms...`);
@@ -246,7 +246,7 @@ async function fetchClubIds() {
 
   for (const url of LEADERBOARD_URLS) {
     try {
-      const { data } = await axios.get(url, { headers: getRandomHeaders() });
+      const { data } = await axios.get(url, { headers: getRandomHeaders(), timeout: 30000 });
       const clubs = data?.clubs ?? [];
       clubs.forEach(c => allIds.add(c.id));
       console.log(`   ✅ Division endpoint returned ${clubs.length} clubs`);
@@ -293,48 +293,18 @@ function computeSeasons(playerHistory, currentOvr) {
 // ==========================================
 
 async function processClub(clubId, totalClubs) {
-  const url = `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/progressions`;
-  let data;
+  const progressionsUrl = `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/progressions?clubId=${clubId}`;
+  const data = await fetchWithRateLimitHandling(progressionsUrl, `club ${clubId}`);
 
-  await waitIfRateLimited();
-
-  try {
-    requestCount++;
-    const response = await axios.get(url, {
-      params: { clubId },
-      headers: getRandomHeaders()
-    });
-    data = response.data;
-  } catch (err) {
-    if (err.response?.status === 403) {
-      clubsFailed++;
-      triggerRateLimit();
-      await waitIfRateLimited();
-      try {
-        requestCount++;
-        const retry = await axios.get(url, {
-          params: { clubId },
-          headers: getRandomHeaders()
-        });
-        data = retry.data;
-        clubsFailed--;
-        console.log(`✅ Club ${clubId} recovered after cooldown`);
-      } catch (retryErr) {
-        console.error(`❌ Club ${clubId} failed again: ${retryErr.message}`);
-        clubsChecked++;
-        return;
-      }
-    } else {
-      clubsFailed++;
-      console.error(`❌ Club ${clubId} failed: ${err.message}`);
-      clubsChecked++;
-      return;
-    }
+  if (!data) {
+    clubsFailed++;
+    clubsChecked++;
+    return;
   }
 
-  if (!data || typeof data !== 'object') { clubsChecked++; return; }
+  if (typeof data !== 'object') { clubsChecked++; return; }
 
-  for (const [playerId, stats] of Object.entries(data)) {
+  for (const [playerId, _stats] of Object.entries(data)) {
     if (seenPlayerIds.has(playerId)) continue;
     seenPlayerIds.add(playerId);
 
