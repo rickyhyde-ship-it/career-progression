@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const DELAY_MS = 50;
+const DELAY_MS = 200;
 const COOLDOWN_403_MS_BASE = 60000;
 const COOLDOWN_403_MAX = 300000;
 const CONCURRENCY = 3;
@@ -116,6 +116,7 @@ async function waitIfRateLimited() {
 
 function triggerRateLimit() {
   consecutive403s++;
+  successSinceLastError = 0;
   if (consecutive403s > 1) {
     currentCooldownMs = Math.min(currentCooldownMs * 2, COOLDOWN_403_MAX);
     console.log(`📈 Consecutive 403s: ${consecutive403s} — cooldown now ${currentCooldownMs / 1000}s`);
@@ -127,9 +128,15 @@ function triggerRateLimit() {
   }
 }
 
+let successSinceLastError = 0;
 function clearRateLimit() {
-  consecutive403s = 0;
-  currentCooldownMs = COOLDOWN_403_MS_BASE;
+  successSinceLastError++;
+  // Only reset cooldown after 50 clean requests in a row
+  if (successSinceLastError >= 50) {
+    consecutive403s = 0;
+    currentCooldownMs = COOLDOWN_403_MS_BASE;
+    successSinceLastError = 0;
+  }
 }
 
 function createSemaphore(limit) {
@@ -350,6 +357,7 @@ async function processClub(clubId, division, totalClubs) {
   if (!data) {
     clubsFailed++;
     clubsChecked++;
+    console.log(`❌ Club ${clubId} (D${division}) failed — ${clubsChecked}/${totalClubs} clubs`);
     return;
   }
 
@@ -397,6 +405,7 @@ async function processClub(clubId, division, totalClubs) {
   }
 
   clubsChecked++;
+  console.log(`✅ Club ${clubId} (D${division}): ${Object.keys(data).length} players — ${clubsChecked}/${totalClubs} clubs, ${allPlayers.length} total players`);
 }
 
 // ==========================================
