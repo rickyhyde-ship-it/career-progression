@@ -238,6 +238,7 @@
       <option value="15">+15</option>
     </select>
     <input type="text" id="search-input" placeholder="🔍  Search player...">
+    <div id="player-count" style="color:#8b949e;font-size:13px;white-space:nowrap;padding:0 4px;"></div>
   </div>
 
   <div id="table-section">
@@ -349,16 +350,17 @@
     const fixedCols = [
       { key: 'position',   label: 'POS' },
       { key: 'age',        label: 'AGE' },
+      { key: 'playerId',   label: 'ID' },
       { key: 'name',       label: 'PLAYER' },
       { key: 'division',   label: 'DIV' },
       { key: 'startOvr',   label: 'START' },
       { key: 'currentOvr', label: 'OVR' },
+      { key: 'total',      label: 'GROWTH' },
     ];
 
     let html = '<tr>';
     for (const col of fixedCols) html += thHtml(col.key, col.label);
     for (let i = 0; i < maxSeasons; i++) html += thHtml(`s${i}`, `S${i + 1}`);
-    html += thHtml('total', 'TOTAL');
     html += '</tr>';
     document.getElementById('table-head').innerHTML = html;
 
@@ -430,15 +432,18 @@
       return `<tr>
         <td class="td-pos">${esc(p.position) || 'N/A'}</td>
         <td class="td-muted">${esc(p.age) || '—'}</td>
+        <td class="td-muted" style="font-size:11px">${esc(p.playerId) || '—'}</td>
         <td>${esc(p.name) || '—'}</td>
         <td class="td-muted">${p.division ? 'D' + esc(p.division) : '—'}</td>
         <td class="td-muted">${esc(p.startOvr) || '—'}</td>
         <td>${esc(p.currentOvr) || '—'}</td>
-        ${seasonCells}
         <td class="td-total">${total >= 0 ? '+' : ''}${esc(total)}</td>
+        ${seasonCells}
       </tr>`;
     }).join('');
 
+    const countEl = document.getElementById('player-count');
+    if (countEl) countEl.textContent = `${filtered.length.toLocaleString()} / ${allData.length.toLocaleString()} players`;
     document.getElementById('footer').textContent =
       `Showing ${filtered.length.toLocaleString()} of ${allData.length.toLocaleString()} players`;
   }
