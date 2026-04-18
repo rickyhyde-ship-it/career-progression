@@ -233,6 +233,8 @@
     <input type="number" id="filter-ovr-min" placeholder="Min +OVR" min="0" style="width:100px">
     <input type="number" id="filter-start-min" placeholder="Min START" min="0" style="width:100px">
     <input type="number" id="filter-start-max" placeholder="Max START" min="0" style="width:100px">
+    <input type="number" id="filter-ovr-min2" placeholder="Min OVR" min="0" style="width:90px">
+    <input type="number" id="filter-ovr-max" placeholder="Max OVR" min="0" style="width:90px">
     <input type="text" id="search-input" placeholder="🔍  Search player...">
     <div id="player-count" style="color:#8b949e;font-size:13px;white-space:nowrap;padding:0 4px;"></div>
   </div>
@@ -393,6 +395,8 @@
     const minOvr     = parseInt(document.getElementById('filter-ovr-min').value) || 0;
     const startMin   = parseInt(document.getElementById('filter-start-min').value) || 0;
     const startMax   = parseInt(document.getElementById('filter-start-max').value) || 0;
+    const ovrMin     = parseInt(document.getElementById('filter-ovr-min2').value) || 0;
+    const ovrMax     = parseInt(document.getElementById('filter-ovr-max').value) || 0;
     const search     = document.getElementById('search-input').value.toLowerCase().trim();
 
     return allData.filter(p => {
@@ -401,6 +405,8 @@
       if (minOvr > 0 && (p.total ?? 0) < minOvr) return false;
       if (startMin > 0 && (p.startOvr ?? 0) < startMin) return false;
       if (startMax > 0 && (p.startOvr ?? 0) > startMax) return false;
+      if (ovrMin > 0 && (p.currentOvr ?? 0) < ovrMin) return false;
+      if (ovrMax > 0 && (p.currentOvr ?? 0) > ovrMax) return false;
       if (search && !(p.name ?? '').toLowerCase().includes(search)) return false;
       return true;
     });
@@ -450,7 +456,7 @@
       `Showing ${filtered.length.toLocaleString()} of ${allData.length.toLocaleString()} players`;
   }
 
-  ['filter-div', 'filter-pos', 'filter-ovr-min', 'filter-start-min', 'filter-start-max', 'search-input'].forEach(id => {
+  ['filter-div', 'filter-pos', 'filter-ovr-min', 'filter-start-min', 'filter-start-max', 'filter-ovr-min2', 'filter-ovr-max', 'search-input'].forEach(id => {
     document.getElementById(id).addEventListener('input', renderRows);
   });
 
