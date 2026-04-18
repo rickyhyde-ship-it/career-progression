@@ -6,12 +6,12 @@ import { execSync } from 'child_process';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const DELAY_MS = 200;
-const COOLDOWN_403_MS_BASE = 60000;
-const COOLDOWN_403_MAX = 300000;
+const DELAY_MS = 25;
+const COOLDOWN_403_MS_BASE = 30000;
+const COOLDOWN_403_MAX = 100000;
 const CONCURRENCY = 3;
 const MAX_RETRIES = 3;
-const RETRY_BASE_MS = 500;
+const RETRY_BASE_MS = 50;
 const CHECKPOINT_FILE = '.progression-checkpoint.json';
 const GH_PAGES_DIR = './gh-pages';
 const PROGRESS_EVERY = 200;
