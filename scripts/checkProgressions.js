@@ -227,7 +227,6 @@ async function fetchWithRateLimitHandling(url, label) {
   for (let attempt = 1; attempt <= MAX_403_RETRIES; attempt++) {
     await waitIfRateLimited();
     await globalRateLimit();
-    requestCount++;
 
     try {
       const { data } = await axios.get(url, { headers: getRandomHeaders(), timeout: 30000 });
