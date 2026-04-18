@@ -336,9 +336,14 @@
       prog.scanned.toLocaleString() + ' / ' + prog.total.toLocaleString();
     document.getElementById('progress-pct').textContent = pct + '%';
     if (prog.etaSeconds > 0) {
-      const m = Math.floor(prog.etaSeconds / 60);
+      const h = Math.floor(prog.etaSeconds / 3600);
+      const m = Math.floor((prog.etaSeconds % 3600) / 60);
       const s = prog.etaSeconds % 60;
-      document.getElementById('eta-value').textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+      const parts = [];
+      if (h > 0) parts.push(`${h}h`);
+      parts.push(`${m}m`);
+      parts.push(`${String(s).padStart(2, '0')}s`);
+      document.getElementById('eta-value').textContent = parts.join(' ');
     } else {
       document.getElementById('eta-value').textContent = '—';
     }
