@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const DELAY_MS = 500;
+const DELAY_MS = 50;
 const COOLDOWN_403_MS = 90000;
 const CONCURRENCY = 1;
 const MAX_RETRIES = 3;
@@ -19,7 +19,16 @@ const PROGRESS_EVERY = 200;
 // ==========================================
 
 const LEADERBOARD_URLS = [
-  { division: 1, url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=1&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 1,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=1&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 2,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=2&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 3,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=3&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 4,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=4&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 5,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=5&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 6,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=6&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 7,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=7&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 8,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=8&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 9,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=9&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: 10, url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=10&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
 ];
 
 const HEADER_SETS = [
