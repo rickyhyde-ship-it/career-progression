@@ -19,11 +19,7 @@ const PROGRESS_EVERY = 200;
 // ==========================================
 
 const LEADERBOARD_URLS = [
-  'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=1&sort=nbMflPoints&sortOrder=DESC&limit=20000',
-  'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=2&sort=nbMflPoints&sortOrder=DESC&limit=20000',
-  'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=3&sort=nbMflPoints&sortOrder=DESC&limit=20000',
-  'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=4&sort=nbMflPoints&sortOrder=DESC&limit=20000',
-  'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=5&sort=nbMflPoints&sortOrder=DESC&limit=20000',
+  { division: 1, url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=1&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
 ];
 
 const HEADER_SETS = [
@@ -250,24 +246,23 @@ async function fetchPlayerHistory(playerId) {
 }
 
 async function fetchClubIds() {
-  console.log('📡 Fetching club IDs from D1–D5 leaderboard endpoints...');
-  const allIds = new Set();
+  console.log('📡 Fetching club IDs from leaderboard endpoints...');
+  const clubMap = new Map(); // clubId -> division
 
-  for (const url of LEADERBOARD_URLS) {
+  for (const { division, url } of LEADERBOARD_URLS) {
     try {
       const { data } = await axios.get(url, { headers: getRandomHeaders(), timeout: 30000 });
       const clubs = data?.clubs ?? [];
-      clubs.forEach(c => allIds.add(c.id));
-      console.log(`   ✅ Division endpoint returned ${clubs.length} clubs`);
+      clubs.forEach(c => clubMap.set(c.id, division));
+      console.log(`   ✅ D${division}: ${clubs.length} clubs`);
     } catch (err) {
-      console.error(`   ❌ Failed to fetch leaderboard: ${url}\n      ${err.message}`);
+      console.error(`   ❌ Failed to fetch D${division} leaderboard: ${err.message}`);
     }
   }
 
-  const ids = [...allIds];
-  if (ids.length === 0) throw new Error('No club IDs retrieved — all leaderboard endpoints failed.');
-  console.log(`📋 Total unique clubs: ${ids.length}\n`);
-  return ids;
+  if (clubMap.size === 0) throw new Error('No club IDs retrieved — all leaderboard endpoints failed.');
+  console.log(`📋 Total unique clubs: ${clubMap.size}\n`);
+  return clubMap;
 }
 
 // ==========================================
@@ -282,16 +277,14 @@ function computeSeasons(playerHistory, currentOvr) {
     return { startOvr: currentOvr, seasons: [], total: 0 };
   }
 
-  // Log first player's history structure so we can debug field names
   if (!debugLogged) {
     debugLogged = true;
-    console.log('🔍 History record sample:', JSON.stringify(playerHistory.slice(0, 3), null, 2));
+    console.log('🔍 History record count:', playerHistory.length);
+    console.log('🔍 History record[0] keys:', Object.keys(playerHistory[0]));
+    console.log('🔍 History sample (first 5):', JSON.stringify(playerHistory.slice(0, 5), null, 2));
   }
 
-  const startOvr = playerHistory[0]?.values?.overall ?? currentOvr;
-  const total = currentOvr - startOvr;
-
-  // Group peak OVR by age — in MFL, 1 age year = 1 season
+  // Group peak OVR by age — 1 MFL age year = 1 season
   const peakByAge = new Map();
   for (const record of playerHistory) {
     const age = record.values?.age;
@@ -301,25 +294,33 @@ function computeSeasons(playerHistory, currentOvr) {
   }
 
   const ages = [...peakByAge.keys()].sort((a, b) => a - b);
+  const mintAge = ages.length > 0 ? ages[0] : null;
+
+  // startOvr = lowest OVR recorded (first age group's minimum)
+  const startOvr = ages.length > 0
+    ? Math.min(...playerHistory.filter(r => r.values?.age === mintAge).map(r => r.values?.overall ?? Infinity))
+    : currentOvr;
+  const total = currentOvr - startOvr;
 
   const seasons = [];
   for (let i = 0; i < ages.length; i++) {
     const prevPeak = i === 0 ? startOvr : peakByAge.get(ages[i - 1]);
-    seasons.push(peakByAge.get(ages[i]) - prevPeak);
+    const gain = peakByAge.get(ages[i]) - prevPeak;
+    if (gain !== 0 || i > 0) seasons.push(gain); // skip leading zero (mint age)
   }
 
   // Add current season if player has progressed beyond last history record
   const lastPeak = ages.length > 0 ? peakByAge.get(ages[ages.length - 1]) : startOvr;
   if (currentOvr > lastPeak) seasons.push(currentOvr - lastPeak);
 
-  return { startOvr, seasons, total };
+  return { startOvr, mintAge, seasons, total };
 }
 
 // ==========================================
 // CLUB SCANNING
 // ==========================================
 
-async function processClub(clubId, totalClubs) {
+async function processClub(clubId, division, totalClubs) {
   const progressionsUrl = `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/progressions?clubId=${clubId}&interval=CURRENT_SEASON`;
   const data = await fetchWithRateLimitHandling(progressionsUrl, `club ${clubId}`);
 
@@ -350,14 +351,15 @@ async function processClub(clubId, totalClubs) {
       console.log('🔍 Metadata keys:', Object.keys(metadata));
     }
     const currentOvr = metadata.overall ?? 0;
-    const { startOvr, seasons, total } = computeSeasons(playerHistory, currentOvr);
+    const { startOvr, mintAge, seasons, total } = computeSeasons(playerHistory, currentOvr);
 
     allPlayers.push({
       playerId,
       name: metadata.name ?? metadata.fullName ?? metadata.firstName ?? metadata.lastName ?? `Player ${playerId}`,
       position: metadata.positions?.[0] ?? 'N/A',
       age: metadata.age ?? 'N/A',
-      division: null,
+      mintAge: mintAge ?? 'N/A',
+      division,
       startOvr,
       currentOvr,
       seasons,
@@ -378,9 +380,9 @@ async function processClub(clubId, totalClubs) {
 // MAIN
 // ==========================================
 
-let CLUB_IDS;
+let clubMap;
 try {
-  CLUB_IDS = await fetchClubIds();
+  clubMap = await fetchClubIds();
 } catch (err) {
   console.error(`💥 Fatal: ${err.message}`);
   process.exit(1);
@@ -396,22 +398,22 @@ if (checkpoint?.players?.length) {
   clubsChecked = completedSet.size;
 }
 
-const pendingClubs = CLUB_IDS.filter(id => !completedSet.has(id));
-console.log(`🔍 ${pendingClubs.length} clubs remaining across D1–D5\n`);
+const pendingClubs = [...clubMap.keys()].filter(id => !completedSet.has(id));
+console.log(`🔍 ${pendingClubs.length} clubs remaining\n`);
 
-await pushProgress(allPlayers.length, CLUB_IDS.length * 5);
+await pushProgress(allPlayers.length, clubMap.size * 5);
 
 const semaphore = createSemaphore(CONCURRENCY);
 
 await Promise.all(pendingClubs.map(async (clubId) => {
   await semaphore.acquire();
   try {
-    await processClub(clubId, CLUB_IDS.length);
+    await processClub(clubId, clubMap.get(clubId), clubMap.size);
     completedSet.add(clubId);
 
     if (completedSet.size % 100 === 0) {
       await saveCheckpoint([...completedSet], allPlayers);
-      console.log(`📊 ${clubsChecked}/${CLUB_IDS.length} clubs, ${allPlayers.length} unique players...`);
+      console.log(`📊 ${clubsChecked}/${clubMap.size} clubs, ${allPlayers.length} unique players...`);
     }
   } finally {
     semaphore.release();
