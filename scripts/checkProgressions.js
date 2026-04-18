@@ -7,12 +7,11 @@ import { execSync } from 'child_process';
 // CONFIGURATION
 // ==========================================
 const DELAY_MS = 50;
-const COOLDOWN_403_MS = 60000;
+const COOLDOWN_403_MS_BASE = 60000;
+const COOLDOWN_403_MAX = 300000;
 const CONCURRENCY = 3;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 500;
-const PROACTIVE_PAUSE_EVERY = 150;
-const PROACTIVE_PAUSE_MS = 30000;
 const CHECKPOINT_FILE = '.progression-checkpoint.json';
 const GH_PAGES_DIR = './gh-pages';
 const PROGRESS_EVERY = 200;
@@ -77,11 +76,19 @@ const allPlayers = [];
 const seenPlayerIds = new Set();
 let clubsChecked = 0;
 let clubsFailed = 0;
-let requestCount = 0;
 let playerDetailsFailed = 0;
 let lastProgressPush = 0;
 
 let rateLimitedUntil = 0;
+let consecutive403s = 0;
+let currentCooldownMs = COOLDOWN_403_MS_BASE;
+
+// Global rate limiter — serialises DELAY_MS across all workers
+let rateLimitChain = Promise.resolve();
+function globalRateLimit() {
+  rateLimitChain = rateLimitChain.then(() => sleep(DELAY_MS));
+  return rateLimitChain;
+}
 
 // ==========================================
 // HELPERS
@@ -108,11 +115,21 @@ async function waitIfRateLimited() {
 }
 
 function triggerRateLimit() {
-  const newUntil = Date.now() + COOLDOWN_403_MS;
+  consecutive403s++;
+  if (consecutive403s > 1) {
+    currentCooldownMs = Math.min(currentCooldownMs * 2, COOLDOWN_403_MAX);
+    console.log(`📈 Consecutive 403s: ${consecutive403s} — cooldown now ${currentCooldownMs / 1000}s`);
+  }
+  const newUntil = Date.now() + currentCooldownMs;
   if (newUntil > rateLimitedUntil) {
     rateLimitedUntil = newUntil;
-    console.log(`🚫 Rate limit triggered — all workers pausing for ${COOLDOWN_403_MS / 1000}s`);
+    console.log(`🚫 Rate limit triggered — all workers pausing for ${currentCooldownMs / 1000}s`);
   }
+}
+
+function clearRateLimit() {
+  consecutive403s = 0;
+  currentCooldownMs = COOLDOWN_403_MS_BASE;
 }
 
 function createSemaphore(limit) {
@@ -209,17 +226,12 @@ async function fetchWithRateLimitHandling(url, label) {
   const MAX_403_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_403_RETRIES; attempt++) {
     await waitIfRateLimited();
+    await globalRateLimit();
     requestCount++;
-
-    if (requestCount % PROACTIVE_PAUSE_EVERY === 0 && requestCount > 0) {
-      console.log(`⏸️  Proactive pause at ${requestCount} requests...`);
-      await sleep(PROACTIVE_PAUSE_MS);
-      console.log(`▶️  Resuming...`);
-    }
 
     try {
       const { data } = await axios.get(url, { headers: getRandomHeaders(), timeout: 30000 });
-      await sleep(DELAY_MS);
+      clearRateLimit();
       return data;
     } catch (err) {
       if (err.response?.status === 403) {
@@ -423,7 +435,7 @@ await Promise.all(pendingClubs.map(async (clubId) => {
     await processClub(clubId, clubMap.get(clubId), clubMap.size);
     completedSet.add(clubId);
 
-    if (completedSet.size % 100 === 0) {
+    if (completedSet.size % 25 === 0) {
       await saveCheckpoint([...completedSet], allPlayers);
       console.log(`📊 ${clubsChecked}/${clubMap.size} clubs, ${allPlayers.length} unique players...`);
     }
