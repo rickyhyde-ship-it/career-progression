@@ -8,7 +8,7 @@ import { execSync } from 'child_process';
 // ==========================================
 const DELAY_MS = 50;
 const COOLDOWN_403_MS = 60000;
-const CONCURRENCY = 8;
+const CONCURRENCY = 3;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 500;
 const PROACTIVE_PAUSE_EVERY = 150;
@@ -101,6 +101,9 @@ async function waitIfRateLimited() {
     const wait = rateLimitedUntil - now;
     console.log(`⏸️  Waiting ${(wait / 1000).toFixed(0)}s for shared cooldown...`);
     await sleep(wait);
+    // Jitter so workers don't all resume and burst simultaneously
+    await sleep(Math.random() * 3000);
+    console.log(`▶️  Resuming...`);
   }
 }
 
