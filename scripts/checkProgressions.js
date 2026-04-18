@@ -274,26 +274,44 @@ async function fetchClubIds() {
 // SEASON COMPUTATION
 // ==========================================
 
+let debugLogged = false;
+let metaDebugLogged = false;
+
 function computeSeasons(playerHistory, currentOvr) {
   if (!Array.isArray(playerHistory) || playerHistory.length === 0) {
     return { startOvr: currentOvr, seasons: [], total: 0 };
   }
 
+  // Log first player's history structure so we can debug field names
+  if (!debugLogged) {
+    debugLogged = true;
+    console.log('🔍 History record sample:', JSON.stringify(playerHistory.slice(0, 3), null, 2));
+  }
+
   const startOvr = playerHistory[0]?.values?.overall ?? currentOvr;
+  const total = currentOvr - startOvr;
+
+  // Group peak OVR by age — in MFL, 1 age year = 1 season
+  const peakByAge = new Map();
+  for (const record of playerHistory) {
+    const age = record.values?.age;
+    const ovr = record.values?.overall;
+    if (age == null || !ovr) continue;
+    peakByAge.set(age, Math.max(ovr, peakByAge.get(age) ?? 0));
+  }
+
+  const ages = [...peakByAge.keys()].sort((a, b) => a - b);
 
   const seasons = [];
-  for (let i = 1; i < playerHistory.length; i++) {
-    const prev = playerHistory[i - 1]?.values?.overall ?? 0;
-    const curr = playerHistory[i]?.values?.overall ?? 0;
-    if (prev > 0 && curr > 0) seasons.push(curr - prev);
+  for (let i = 0; i < ages.length; i++) {
+    const prevPeak = i === 0 ? startOvr : peakByAge.get(ages[i - 1]);
+    seasons.push(peakByAge.get(ages[i]) - prevPeak);
   }
 
-  const lastHistoryOvr = playerHistory[playerHistory.length - 1]?.values?.overall;
-  if (lastHistoryOvr && currentOvr && currentOvr !== lastHistoryOvr) {
-    seasons.push(currentOvr - lastHistoryOvr);
-  }
+  // Add current season if player has progressed beyond last history record
+  const lastPeak = ages.length > 0 ? peakByAge.get(ages[ages.length - 1]) : startOvr;
+  if (currentOvr > lastPeak) seasons.push(currentOvr - lastPeak);
 
-  const total = currentOvr - startOvr;
   return { startOvr, seasons, total };
 }
 
@@ -326,12 +344,17 @@ async function processClub(clubId, totalClubs) {
     }
 
     const metadata = playerDetails.player?.metadata ?? {};
+    if (!metaDebugLogged) {
+      metaDebugLogged = true;
+      console.log('🔍 Player details sample:', JSON.stringify(playerDetails.player ?? playerDetails, null, 2).slice(0, 1000));
+      console.log('🔍 Metadata keys:', Object.keys(metadata));
+    }
     const currentOvr = metadata.overall ?? 0;
     const { startOvr, seasons, total } = computeSeasons(playerHistory, currentOvr);
 
     allPlayers.push({
       playerId,
-      name: metadata.name ?? `Player ${playerId}`,
+      name: metadata.name ?? metadata.fullName ?? metadata.firstName ?? metadata.lastName ?? `Player ${playerId}`,
       position: metadata.positions?.[0] ?? 'N/A',
       age: metadata.age ?? 'N/A',
       division: null,
