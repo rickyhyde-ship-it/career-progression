@@ -236,8 +236,6 @@
       <option value="ATT">ATT</option>
     </select>
     <input type="number" id="filter-ovr-min" placeholder="Min +OVR" min="0" style="width:100px">
-    <input type="number" id="filter-start-min" placeholder="Min START" min="0" style="width:100px">
-    <input type="number" id="filter-start-max" placeholder="Max START" min="0" style="width:100px">
     <input type="number" id="filter-ovr-min2" placeholder="Min OVR" min="0" style="width:90px">
     <input type="number" id="filter-ovr-max" placeholder="Max OVR" min="0" style="width:90px">
     <input type="text" id="search-input" placeholder="🔍  Search player...">
@@ -267,8 +265,7 @@
   }
 
   let allData = [];
-  let maxSeasons = 0;
-  let sortCol = 'total';
+  let sortCol = 'seasonGain';
   let sortDir = 'desc';
   let pollInterval = null;
 
@@ -319,7 +316,6 @@
         document.getElementById('last-updated').style.display = 'block';
       }
 
-      maxSeasons = Math.max(0, ...allData.map(p => p.seasons?.length ?? 0));
       buildTable();
       document.getElementById('filter-section').classList.add('visible');
       document.getElementById('table-section').classList.add('visible');
@@ -357,19 +353,16 @@
   function buildHeader() {
     const fixedCols = [
       { key: 'position',   label: 'POS' },
-      { key: 'mintAge',    label: 'MINT' },
       { key: 'age',        label: 'AGE' },
       { key: 'playerId',   label: 'ID' },
       { key: 'name',       label: 'PLAYER' },
       { key: 'division',   label: 'DIV' },
-      { key: 'startOvr',   label: 'START' },
       { key: 'currentOvr', label: 'OVR' },
-      { key: 'total',      label: 'GROWTH' },
+      { key: 'seasonGain', label: 'SEASON GAIN' },
     ];
 
     let html = '<tr>';
     for (const col of fixedCols) html += thHtml(col.key, col.label);
-    for (let i = 0; i < maxSeasons; i++) html += thHtml(`s${i}`, `S${i + 1}`);
     html += '</tr>';
     document.getElementById('table-head').innerHTML = html;
 
@@ -402,9 +395,7 @@
   function getFilteredData() {
     const divFilter  = document.getElementById('filter-div').value;
     const posFilter  = document.getElementById('filter-pos').value;
-    const minOvr     = parseInt(document.getElementById('filter-ovr-min').value) || 0;
-    const startMin   = parseInt(document.getElementById('filter-start-min').value) || 0;
-    const startMax   = parseInt(document.getElementById('filter-start-max').value) || 0;
+    const minGain    = parseInt(document.getElementById('filter-ovr-min').value) || 0;
     const ovrMin     = parseInt(document.getElementById('filter-ovr-min2').value) || 0;
     const ovrMax     = parseInt(document.getElementById('filter-ovr-max').value) || 0;
     const search     = document.getElementById('search-input').value.toLowerCase().trim();
@@ -412,9 +403,7 @@
     return allData.filter(p => {
       if (divFilter && String(p.division) !== divFilter) return false;
       if (posFilter && p.position !== posFilter) return false;
-      if (minOvr > 0 && (p.total ?? 0) < minOvr) return false;
-      if (startMin > 0 && (p.startOvr ?? 0) < startMin) return false;
-      if (startMax > 0 && (p.startOvr ?? 0) > startMax) return false;
+      if (minGain > 0 && (p.seasonGain ?? 0) < minGain) return false;
       if (ovrMin > 0 && (p.currentOvr ?? 0) < ovrMin) return false;
       if (ovrMax > 0 && (p.currentOvr ?? 0) > ovrMax) return false;
       if (search && !(p.name ?? '').toLowerCase().includes(search)) return false;
@@ -423,7 +412,6 @@
   }
 
   function getSortValue(p, col) {
-    if (col.startsWith('s')) return p.seasons?.[parseInt(col.slice(1))] ?? -Infinity;
     return p[col] ?? '';
   }
 
@@ -438,25 +426,18 @@
     });
 
     document.getElementById('table-body').innerHTML = filtered.map(p => {
-      const seasonCells = Array.from({ length: maxSeasons }, (_, i) => {
-        const gain = p.seasons?.[i];
-        if (gain == null) return `<td class="td-muted">—</td>`;
-        if (gain === 0)   return `<td class="td-gain-zero">+0</td>`;
-        return `<td class="td-gain">${gain > 0 ? '+' : ''}${gain}</td>`;
-      }).join('');
-
-      const total = p.total ?? 0;
+      const gain = p.seasonGain;
+      const gainCell = gain == null
+        ? `<td class="td-muted">—</td>`
+        : `<td class="td-total">${gain > 0 ? '+' : ''}${esc(gain)}</td>`;
       return `<tr>
         <td class="td-pos">${esc(p.position) || 'N/A'}</td>
-        <td class="td-muted">${esc(p.mintAge) || '—'}</td>
         <td class="td-muted">${esc(p.age) || '—'}</td>
         <td class="td-muted" style="font-size:11px">${esc(p.playerId) || '—'}</td>
         <td>${esc(p.name) || '—'}</td>
         <td class="td-muted">${p.division != null ? 'D' + esc(p.division) : '—'}</td>
-        <td class="td-muted">${esc(p.startOvr) || '—'}</td>
         <td>${esc(p.currentOvr) || '—'}</td>
-        <td class="td-total">${total >= 0 ? '+' : ''}${esc(total)}</td>
-        ${seasonCells}
+        ${gainCell}
       </tr>`;
     }).join('');
 
@@ -466,7 +447,7 @@
       `Showing ${filtered.length.toLocaleString()} of ${allData.length.toLocaleString()} players`;
   }
 
-  ['filter-div', 'filter-pos', 'filter-ovr-min', 'filter-start-min', 'filter-start-max', 'filter-ovr-min2', 'filter-ovr-max', 'search-input'].forEach(id => {
+  ['filter-div', 'filter-pos', 'filter-ovr-min', 'filter-ovr-min2', 'filter-ovr-max', 'search-input'].forEach(id => {
     document.getElementById(id).addEventListener('input', renderRows);
   });
 
