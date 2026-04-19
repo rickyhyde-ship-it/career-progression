@@ -6,9 +6,9 @@ import { execSync } from 'child_process';
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const DELAY_MS = 25;
-const COOLDOWN_403_MS_BASE = 30000;
-const COOLDOWN_403_MAX = 100000;
+const DELAY_MS = 100;
+const COOLDOWN_403_MS_BASE = 60000;
+const COOLDOWN_403_MAX = 300000;
 const CONCURRENCY = 3;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 50;
@@ -27,7 +27,6 @@ const LEADERBOARD_URLS = [
   { division: 7,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=7&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
   { division: 8,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=8&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
   { division: 9,  url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=9&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
-  { division: 10, url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=10&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
 ];
 
 const HEADER_SETS = [
@@ -268,12 +267,6 @@ async function fetchPlayerDetails(playerId) {
   );
 }
 
-async function fetchPlayerHistory(playerId) {
-  return fetchWithRateLimitHandling(
-    `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}/experiences/history`,
-    `player history ${playerId}`
-  );
-}
 
 async function fetchClubIds() {
   console.log('📡 Fetching club IDs from leaderboard endpoints...');
@@ -295,56 +288,7 @@ async function fetchClubIds() {
   return clubMap;
 }
 
-// ==========================================
-// SEASON COMPUTATION
-// ==========================================
-
-let debugLogged = false;
 let metaDebugLogged = false;
-
-function computeSeasons(playerHistory, currentOvr) {
-  if (!Array.isArray(playerHistory) || playerHistory.length === 0) {
-    return { startOvr: currentOvr, seasons: [], total: 0 };
-  }
-
-  if (!debugLogged) {
-    debugLogged = true;
-    console.log('🔍 History record count:', playerHistory.length);
-    console.log('🔍 History record[0] keys:', Object.keys(playerHistory[0]));
-    console.log('🔍 History sample (first 5):', JSON.stringify(playerHistory.slice(0, 5), null, 2));
-  }
-
-  // Group peak OVR by age — 1 MFL age year = 1 season
-  const peakByAge = new Map();
-  for (const record of playerHistory) {
-    const age = record.values?.age;
-    const ovr = record.values?.overall;
-    if (age == null || !ovr) continue;
-    peakByAge.set(age, Math.max(ovr, peakByAge.get(age) ?? 0));
-  }
-
-  const ages = [...peakByAge.keys()].sort((a, b) => a - b);
-  const mintAge = ages.length > 0 ? ages[0] : null;
-
-  // startOvr = lowest OVR recorded (first age group's minimum)
-  const startOvr = ages.length > 0
-    ? Math.min(...playerHistory.filter(r => r.values?.age === mintAge).map(r => r.values?.overall ?? Infinity))
-    : currentOvr;
-  const total = currentOvr - startOvr;
-
-  const seasons = [];
-  for (let i = 0; i < ages.length; i++) {
-    const prevPeak = i === 0 ? startOvr : peakByAge.get(ages[i - 1]);
-    const gain = peakByAge.get(ages[i]) - prevPeak;
-    if (gain !== 0 || i > 0) seasons.push(gain); // skip leading zero (mint age)
-  }
-
-  // Add current season if player has progressed beyond last history record
-  const lastPeak = ages.length > 0 ? peakByAge.get(ages[ages.length - 1]) : startOvr;
-  if (currentOvr > lastPeak) seasons.push(currentOvr - lastPeak);
-
-  return { startOvr, mintAge, seasons, total };
-}
 
 // ==========================================
 // CLUB SCANNING
@@ -363,12 +307,17 @@ async function processClub(clubId, division, totalClubs) {
 
   if (typeof data !== 'object') { clubsChecked++; return; }
 
-  for (const [playerId, _stats] of Object.entries(data)) {
+  let statsDebugLogged = false;
+  for (const [playerId, stats] of Object.entries(data)) {
     if (seenPlayerIds.has(playerId)) continue;
     seenPlayerIds.add(playerId);
 
+    if (!statsDebugLogged) {
+      statsDebugLogged = true;
+      console.log(`🔍 Progressions stats sample for player ${playerId}:`, JSON.stringify(stats, null, 2));
+    }
+
     const playerDetails = await fetchPlayerDetails(playerId);
-    const playerHistory = await fetchPlayerHistory(playerId);
 
     if (!playerDetails) {
       playerDetailsFailed++;
@@ -382,19 +331,16 @@ async function processClub(clubId, division, totalClubs) {
       console.log('🔍 Metadata keys:', Object.keys(metadata));
     }
     const currentOvr = metadata.overall ?? 0;
-    const { startOvr, mintAge, seasons, total } = computeSeasons(playerHistory, currentOvr);
+    const seasonGain = stats?.overall ?? stats?.nbOverallPoints ?? null;
 
     allPlayers.push({
       playerId,
       name: metadata.name ?? metadata.fullName ?? metadata.firstName ?? metadata.lastName ?? `Player ${playerId}`,
       position: metadata.positions?.[0] ?? 'N/A',
       age: metadata.age ?? 'N/A',
-      mintAge: mintAge ?? 'N/A',
       division,
-      startOvr,
       currentOvr,
-      seasons,
-      total
+      seasonGain,
     });
 
     const newTotal = allPlayers.length;
@@ -458,7 +404,7 @@ console.log(`📊 Clubs: ${clubsChecked} checked, ${clubsFailed} failed`);
 console.log(`👥 Unique players: ${allPlayers.length}`);
 console.log(`⚠️  Player detail failures: ${playerDetailsFailed}`);
 
-allPlayers.sort((a, b) => b.total - a.total);
+allPlayers.sort((a, b) => (b.seasonGain ?? 0) - (a.seasonGain ?? 0));
 
 await pushData(allPlayers);
 await clearCheckpoint();
