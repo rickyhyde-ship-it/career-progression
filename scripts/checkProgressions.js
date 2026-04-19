@@ -12,8 +12,8 @@ const COOLDOWN_403_MAX = 300000;
 const CONCURRENCY = 3;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 50;
-const CHECKPOINT_FILE = '.progression-checkpoint.json';
 const GH_PAGES_DIR = './gh-pages';
+const CHECKPOINT_FILE = `${GH_PAGES_DIR}/.progression-checkpoint.json`;
 const PROGRESS_EVERY = 200;
 // ==========================================
 
