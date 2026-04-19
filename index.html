@@ -240,6 +240,7 @@
     <input type="number" id="filter-ovr-max" placeholder="Max OVR" min="0" style="width:90px">
     <input type="text" id="search-input" placeholder="🔍  Search player...">
     <div id="player-count" style="color:#8b949e;font-size:13px;white-space:nowrap;padding:0 4px;"></div>
+    <button id="export-btn" onclick="exportCsv()" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap">⬇ Export CSV</button>
   </div>
 
   <div id="table-section">
@@ -450,6 +451,40 @@
   ['filter-div', 'filter-pos', 'filter-ovr-min', 'filter-ovr-min2', 'filter-ovr-max', 'search-input'].forEach(id => {
     document.getElementById(id).addEventListener('input', renderRows);
   });
+
+  function exportCsv() {
+    const filtered = getFilteredData();
+    filtered.sort((a, b) => {
+      const av = getSortValue(a, sortCol);
+      const bv = getSortValue(b, sortCol);
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const headers = ['Position', 'Age', 'Player ID', 'Player Name', 'Division', 'OVR', 'Season Gain'];
+    const rows = filtered.map(p => [
+      p.position ?? '',
+      p.age ?? '',
+      p.playerId ?? '',
+      p.name ?? '',
+      p.division != null ? `D${p.division}` : '',
+      p.currentOvr ?? '',
+      p.seasonGain ?? '',
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mfl-progression-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   init();
 </script>
