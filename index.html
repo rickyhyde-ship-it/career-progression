@@ -178,6 +178,121 @@
       font-size: 12px;
       text-align: right;
     }
+
+    /* Prediction model */
+    .pred-panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 24px;
+    }
+    .pred-header {
+      padding: 14px 18px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .pred-header:hover { background: #1c2128; }
+    .pred-body { padding: 0 18px 20px; border-top: 1px solid #30363d; }
+    .pred-input-grid {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      align-items: flex-start;
+    }
+    .pred-field-label {
+      color: #8b949e;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .pred-range {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pred-range span { color: #8b949e; font-size: 12px; }
+    input[type="number"].pred-num {
+      background: #161b22;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 13px;
+      outline: none;
+      width: 62px;
+    }
+    input[type="number"].pred-num:focus { border-color: #58a6ff; }
+    .pos-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .pos-btn:hover { border-color: #58a6ff; color: #e6edf3; }
+    .pos-btn.active { background: #1f3147; border-color: #58a6ff; color: #58a6ff; }
+    .season-filter-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 14px;
+    }
+    .season-filter-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .season-filter-item label {
+      color: #8b949e;
+      font-size: 11px;
+      font-weight: 600;
+      min-width: 20px;
+    }
+    .pred-run-btn {
+      background: #238636;
+      border: 1px solid #2ea043;
+      color: #fff;
+      border-radius: 6px;
+      padding: 8px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .pred-run-btn:hover { background: #2ea043; }
+    .pred-clear-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .stat-pill {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 14px;
+      min-width: 80px;
+    }
+    .stat-pill-label { color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat-pill-val { color: #3fb950; font-size: 17px; font-weight: 700; }
+    .stat-pill-val.blue { color: #58a6ff; }
   </style>
 </head>
 <body>
@@ -254,6 +369,63 @@
     <div class="footer" id="footer"></div>
   </div>
 
+  <div id="prediction-section" style="display:none">
+    <div class="pred-panel">
+      <div class="pred-header" onclick="togglePrediction()">
+        <div>
+          <div style="font-weight:700; font-size:15px; color:#58a6ff">Career Projection Model</div>
+          <div style="color:#8b949e; font-size:12px; margin-top:2px">Compare your player against 8+ season historical players</div>
+        </div>
+        <span id="pred-toggle-icon" style="color:#8b949e; font-size:16px">▼</span>
+      </div>
+      <div id="pred-body" class="pred-body">
+
+        <div class="pred-input-grid">
+          <div>
+            <div class="pred-field-label">Start OVR range</div>
+            <div class="pred-range">
+              <input type="number" class="pred-num" id="pred-ovr-min" placeholder="Min" min="0" max="99">
+              <span>–</span>
+              <input type="number" class="pred-num" id="pred-ovr-max" placeholder="Max" min="0" max="99">
+            </div>
+          </div>
+          <div>
+            <div class="pred-field-label">Mint Age range</div>
+            <div class="pred-range">
+              <input type="number" class="pred-num" id="pred-age-min" placeholder="Min" min="15" max="40">
+              <span>–</span>
+              <input type="number" class="pred-num" id="pred-age-max" placeholder="Max" min="15" max="40">
+            </div>
+          </div>
+          <div>
+            <div class="pred-field-label">Position/s</div>
+            <div id="pred-pos-btns" style="display:flex; gap:6px; flex-wrap:wrap"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px">
+          <div class="pred-field-label">Season progression ranges <span style="font-weight:400; text-transform:none; letter-spacing:0">(leave blank to skip)</span></div>
+          <div class="season-filter-row" id="pred-season-filters"></div>
+        </div>
+
+        <div style="margin-top:16px; display:flex; gap:10px; align-items:center">
+          <button class="pred-run-btn" onclick="runPrediction()">Find Matches</button>
+          <button class="pred-clear-btn" onclick="clearPrediction()">Clear</button>
+          <span style="color:#8b949e; font-size:12px" id="pred-pool-info"></span>
+        </div>
+
+        <div id="pred-results" style="display:none; margin-top:20px; border-top:1px solid #21262d; padding-top:16px">
+          <div id="pred-match-count" style="font-size:14px; margin-bottom:14px"></div>
+          <div class="stat-pills" id="pred-stats"></div>
+          <div id="pred-chart-container" style="margin-bottom:16px"></div>
+          <div style="color:#8b949e; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px">Closest Matches</div>
+          <div class="table-wrapper" id="pred-matches-table"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -322,6 +494,8 @@
       buildTable();
       document.getElementById('filter-section').classList.add('visible');
       document.getElementById('table-section').classList.add('visible');
+      document.getElementById('prediction-section').style.display = 'block';
+      initPrediction();
     } catch {
       document.getElementById('empty-state').classList.add('visible');
     }
@@ -519,6 +693,292 @@
   }
 
   init();
+
+  // ==========================================
+  // PREDICTION MODEL
+  // ==========================================
+
+  const PRED_SEASONS = 5;
+  const MIN_CAREER_SEASONS = 8;
+  let predOpen = true;
+  let predInitDone = false;
+  let predAutoTimer = null;
+
+  const POS_MAP = {
+    GK:  p => p.startsWith('GK'),
+    DEF: p => ['CB','LB','RB','LWB','RWB','SW','WB'].includes(p),
+    MID: p => ['CM','CDM','CAM','LM','RM','DM','AM','DMF','CMF','AMF'].includes(p),
+    ATT: p => ['ST','CF','LW','RW','SS','FW','LF','RF'].includes(p),
+  };
+
+  function posMatchesCategories(position, categories) {
+    if (!categories.length) return true;
+    const pos = (position ?? '').toUpperCase();
+    return categories.some(cat => POS_MAP[cat]?.(pos) ?? false);
+  }
+
+  function pct(sorted, p) {
+    if (!sorted.length) return 0;
+    const idx = (p / 100) * (sorted.length - 1);
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    return Math.round(sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo));
+  }
+
+  function togglePrediction() {
+    predOpen = !predOpen;
+    document.getElementById('pred-body').style.display = predOpen ? '' : 'none';
+    document.getElementById('pred-toggle-icon').textContent = predOpen ? '▼' : '▶';
+  }
+
+  function initPrediction() {
+    if (predInitDone) return;
+    predInitDone = true;
+
+    // Position buttons
+    const posContainer = document.getElementById('pred-pos-btns');
+    ['GK', 'DEF', 'MID', 'ATT'].forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'pos-btn';
+      btn.dataset.pos = cat;
+      btn.textContent = cat;
+      btn.onclick = () => { btn.classList.toggle('active'); runPredictionAuto(); };
+      posContainer.appendChild(btn);
+    });
+
+    // Season range inputs S1–S5
+    const seasonsContainer = document.getElementById('pred-season-filters');
+    for (let i = 1; i <= PRED_SEASONS; i++) {
+      const div = document.createElement('div');
+      div.className = 'season-filter-item';
+      div.innerHTML = `
+        <label>S${i}</label>
+        <input type="number" class="pred-num" id="pred-s${i}-min" placeholder="Min" style="width:54px">
+        <span style="color:#8b949e;font-size:12px">–</span>
+        <input type="number" class="pred-num" id="pred-s${i}-max" placeholder="Max" style="width:54px">
+      `;
+      seasonsContainer.appendChild(div);
+    }
+
+    // Wire up auto-run
+    ['pred-ovr-min','pred-ovr-max','pred-age-min','pred-age-max'].forEach(id => {
+      document.getElementById(id).addEventListener('input', runPredictionAuto);
+    });
+    for (let i = 1; i <= PRED_SEASONS; i++) {
+      document.getElementById(`pred-s${i}-min`).addEventListener('input', runPredictionAuto);
+      document.getElementById(`pred-s${i}-max`).addEventListener('input', runPredictionAuto);
+    }
+
+    // Show pool size
+    const pool = allData.filter(p => (p.seasons ?? []).length >= MIN_CAREER_SEASONS);
+    document.getElementById('pred-pool-info').textContent =
+      `${pool.length} players with ${MIN_CAREER_SEASONS}+ seasons in dataset`;
+  }
+
+  function runPredictionAuto() {
+    clearTimeout(predAutoTimer);
+    predAutoTimer = setTimeout(runPrediction, 350);
+  }
+
+  function getSeasonFilters() {
+    const filters = [];
+    for (let i = 1; i <= PRED_SEASONS; i++) {
+      const minV = document.getElementById(`pred-s${i}-min`)?.value;
+      const maxV = document.getElementById(`pred-s${i}-max`)?.value;
+      if (minV !== '' || maxV !== '') {
+        filters.push({
+          idx: i - 1,
+          min: minV !== '' ? parseInt(minV) : -Infinity,
+          max: maxV !== '' ? parseInt(maxV) : Infinity,
+          midpoint: ((minV !== '' ? parseInt(minV) : 0) + (maxV !== '' ? parseInt(maxV) : 0)) / 2,
+        });
+      }
+    }
+    return filters;
+  }
+
+  function applyPredFilters(players, { ovrMin, ovrMax, ageMin, ageMax, positions, seasonFilters, slack = 0 }) {
+    return players.filter(p => {
+      if (ovrMin > 0 && (p.startOvr ?? 0) < ovrMin - slack) return false;
+      if (ovrMax < 999 && (p.startOvr ?? 0) > ovrMax + slack) return false;
+      if (ageMin > 0 && (p.mintAge ?? 0) < ageMin - Math.min(slack, 2)) return false;
+      if (ageMax < 999 && (p.mintAge ?? 0) > ageMax + Math.min(slack, 2)) return false;
+      if (!posMatchesCategories(p.position, positions)) return false;
+      for (const f of seasonFilters) {
+        const gain = (p.seasons ?? [])[f.idx];
+        if (gain == null) return false;
+        if (gain < f.min - slack || gain > f.max + slack) return false;
+      }
+      return true;
+    });
+  }
+
+  function runPrediction() {
+    const ovrMin = parseInt(document.getElementById('pred-ovr-min').value) || 0;
+    const ovrMax = parseInt(document.getElementById('pred-ovr-max').value) || 999;
+    const ageMin = parseInt(document.getElementById('pred-age-min').value) || 0;
+    const ageMax = parseInt(document.getElementById('pred-age-max').value) || 999;
+    const positions = [...document.querySelectorAll('#pred-pos-btns .pos-btn.active')].map(b => b.dataset.pos);
+    const seasonFilters = getSeasonFilters();
+
+    const pool = allData.filter(p => (p.seasons ?? []).length >= MIN_CAREER_SEASONS);
+    const params = { ovrMin, ovrMax, ageMin, ageMax, positions, seasonFilters };
+
+    let matched = applyPredFilters(pool, { ...params, slack: 0 });
+    let widened = false;
+
+    if (matched.length < 10 && pool.length > 0) {
+      const wider = applyPredFilters(pool, { ...params, slack: 5 });
+      if (wider.length > matched.length) { matched = wider; widened = true; }
+    }
+
+    document.getElementById('pred-results').style.display = 'block';
+
+    const countEl = document.getElementById('pred-match-count');
+    if (!matched.length) {
+      countEl.innerHTML = '<span style="color:#f85149">No matching players found — try widening your filters</span>';
+      document.getElementById('pred-stats').innerHTML = '';
+      document.getElementById('pred-chart-container').innerHTML = '';
+      document.getElementById('pred-matches-table').innerHTML = '';
+      return;
+    }
+
+    countEl.innerHTML =
+      `<strong style="color:#e6edf3">${matched.length}</strong> <span style="color:#8b949e">matching players</span>` +
+      (widened ? ' <span style="color:#d29922; font-size:12px">(criteria widened ±5 to find more matches)</span>' : '');
+
+    // Stats
+    const growths = matched.map(p => p.careerGrowth ?? 0).sort((a, b) => a - b);
+    const finalOvrs = matched.map(p => p.currentOvr ?? 0).sort((a, b) => a - b);
+    const fmt = v => (v >= 0 ? '+' : '') + v;
+    document.getElementById('pred-stats').innerHTML = `
+      <div class="stat-pill"><div class="stat-pill-label">P25 Career</div><div class="stat-pill-val">${fmt(pct(growths, 25))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Median Career</div><div class="stat-pill-val">${fmt(pct(growths, 50))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">P75 Career</div><div class="stat-pill-val">${fmt(pct(growths, 75))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">P90 Career</div><div class="stat-pill-val">${fmt(pct(growths, 90))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Median Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs, 50)}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">P75 Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs, 75)}</div></div>
+    `;
+
+    drawGrowthChart(matched);
+    drawMatchesTable(matched, seasonFilters);
+  }
+
+  function drawGrowthChart(players) {
+    const validPlayers = players.filter(p => (p.seasonOvrs ?? []).length > 1);
+    if (!validPlayers.length) {
+      document.getElementById('pred-chart-container').innerHTML =
+        '<p style="color:#8b949e;font-size:12px">OVR trajectory unavailable — run a new scan to collect this data.</p>';
+      return;
+    }
+
+    const maxSeas = Math.max(...validPlayers.map(p => p.seasonOvrs.length - 1));
+
+    const points = [];
+    for (let i = 0; i <= maxSeas; i++) {
+      const vals = validPlayers.map(p => (p.seasonOvrs ?? [])[i]).filter(v => v != null).sort((a, b) => a - b);
+      if (vals.length) points.push({ i, p25: pct(vals, 25), median: pct(vals, 50), p75: pct(vals, 75) });
+    }
+    if (points.length < 2) { document.getElementById('pred-chart-container').innerHTML = ''; return; }
+
+    const W = 600, H = 160, P = { t: 12, r: 14, b: 28, l: 38 };
+    const cW = W - P.l - P.r, cH = H - P.t - P.b;
+    const minOvr = Math.min(...points.map(d => d.p25)) - 1;
+    const maxOvr = Math.max(...points.map(d => d.p75)) + 1;
+    const x = i => P.l + (i / maxSeas) * cW;
+    const y = v => P.t + cH - ((v - minOvr) / (maxOvr - minOvr || 1)) * cH;
+
+    const bandTop = points.map(d => `${x(d.i).toFixed(1)},${y(d.p75).toFixed(1)}`).join(' ');
+    const bandBot = [...points].reverse().map(d => `${x(d.i).toFixed(1)},${y(d.p25).toFixed(1)}`).join(' ');
+    const median = points.map(d => `${x(d.i).toFixed(1)},${y(d.median).toFixed(1)}`).join(' ');
+
+    const rawStep = (maxOvr - minOvr) / 4;
+    const step = Math.max(1, Math.ceil(rawStep / 5) * 5);
+    const yTicks = [];
+    for (let v = Math.ceil(minOvr / step) * step; v <= maxOvr; v += step) yTicks.push(v);
+
+    const xStep = Math.max(1, Math.ceil(maxSeas / 8));
+    const xTicks = points.filter(d => d.i % xStep === 0);
+
+    document.getElementById('pred-chart-container').innerHTML = `
+      <div style="color:#8b949e; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px">
+        OVR Trajectory — median (line) + P25–P75 band · ${validPlayers.length} players
+      </div>
+      <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block; overflow:visible">
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#58a6ff" stop-opacity="0.04"/>
+          </linearGradient>
+        </defs>
+        ${yTicks.map(v => `
+          <line x1="${P.l}" y1="${y(v).toFixed(1)}" x2="${W - P.r}" y2="${y(v).toFixed(1)}" stroke="#21262d" stroke-width="1"/>
+          <text x="${P.l - 4}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" fill="#8b949e" font-size="10">${v}</text>
+        `).join('')}
+        <polygon points="${bandTop} ${bandBot}" fill="url(#bg)"/>
+        <polyline points="${median}" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linejoin="round"/>
+        ${xTicks.map(d => `<text x="${x(d.i).toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="#8b949e" font-size="10">S${d.i}</text>`).join('')}
+        <line x1="${P.l}" y1="${P.t}" x2="${P.l}" y2="${H - P.b}" stroke="#30363d" stroke-width="1"/>
+        <line x1="${P.l}" y1="${H - P.b}" x2="${W - P.r}" y2="${H - P.b}" stroke="#30363d" stroke-width="1"/>
+      </svg>
+    `;
+  }
+
+  function drawMatchesTable(players, seasonFilters) {
+    const scored = players.map(p => {
+      let dist = 0;
+      for (const f of seasonFilters) {
+        dist += Math.abs(((p.seasons ?? [])[f.idx] ?? 0) - f.midpoint);
+      }
+      return { p, dist };
+    }).sort((a, b) => a.dist - b.dist || (b.p.careerGrowth ?? 0) - (a.p.careerGrowth ?? 0));
+
+    const top = scored.slice(0, 10).map(({ p }) => p);
+    const showSeas = Math.min(PRED_SEASONS, Math.max(...top.map(p => (p.seasons ?? []).length)));
+
+    const headers = ['Player', 'Pos', 'Mint', 'Start OVR',
+      ...Array.from({ length: showSeas }, (_, i) => `S${i + 1}`), 'Career'];
+
+    const rows = top.map(p => {
+      const seas = p.seasons ?? [];
+      const seasonCells = Array.from({ length: showSeas }, (_, i) => {
+        const g = seas[i];
+        if (g == null) return '<td class="td-muted">—</td>';
+        if (g > 0) return `<td class="td-gain">+${g}</td>`;
+        if (g < 0) return `<td class="td-loss">${g}</td>`;
+        return '<td class="td-muted">0</td>';
+      }).join('');
+      const career = p.careerGrowth ?? 0;
+      return `<tr>
+        <td>${esc(p.name)}</td>
+        <td class="td-pos">${esc(p.position)}</td>
+        <td class="td-muted">${esc(p.mintAge) || '—'}</td>
+        <td class="td-muted">${esc(p.startOvr) || '—'}</td>
+        ${seasonCells}
+        <td class="td-total">${career > 0 ? '+' : ''}${career}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('pred-matches-table').innerHTML = `
+      <table style="width:100%; border-collapse:collapse; font-size:13px">
+        <thead><tr>${headers.map(h =>
+          `<th style="padding:7px 10px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:2px solid #30363d; white-space:nowrap">${h}</th>`
+        ).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function clearPrediction() {
+    ['pred-ovr-min','pred-ovr-max','pred-age-min','pred-age-max'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    for (let i = 1; i <= PRED_SEASONS; i++) {
+      document.getElementById(`pred-s${i}-min`).value = '';
+      document.getElementById(`pred-s${i}-max`).value = '';
+    }
+    document.querySelectorAll('#pred-pos-btns .pos-btn.active').forEach(b => b.classList.remove('active'));
+    document.getElementById('pred-results').style.display = 'none';
+  }
 </script>
 </body>
 </html>
