@@ -407,7 +407,7 @@ async function processClub(clubId, division, totalClubs) {
     const currentOvr = metadata.overall ?? 0;
 
     const historyRecords = Array.isArray(playerHistory) ? playerHistory : [];
-    const { startOvr, seasons, careerGrowth, mintAge } = computeSeasons(historyRecords, currentOvr);
+    const { startOvr, seasons, seasonOvrs, careerGrowth, mintAge, seasonsAtCeiling, revealedPotential, growthRate } = computeSeasons(historyRecords, currentOvr);
 
     allPlayers.push({
       playerId,
