@@ -295,7 +295,7 @@ let metaDebugLogged = false;
 
 function computeSeasons(historyRecords, currentOvr) {
   if (!Array.isArray(historyRecords) || historyRecords.length === 0) {
-    return { startOvr: currentOvr, seasons: [], careerGrowth: 0, mintAge: null };
+    return { startOvr: currentOvr, seasons: [], seasonOvrs: [currentOvr], careerGrowth: 0, mintAge: null, seasonsAtCeiling: 0, revealedPotential: null, growthRate: null };
   }
   const seasons = [];
   let seasonStartOvr = null;
@@ -326,11 +326,38 @@ function computeSeasons(historyRecords, currentOvr) {
     seasons.push(currentOvr - seasonStartOvr);
   }
 
+  const effectiveStart = startOvr ?? currentOvr;
+
+  // Absolute OVR at each season boundary
+  const seasonOvrs = [effectiveStart];
+  let running = effectiveStart;
+  for (const gain of seasons) {
+    running += gain;
+    seasonOvrs.push(running);
+  }
+
+  // Trailing zero-growth seasons (excluding current in-progress season)
+  const completedSeasons = seasons.slice(0, -1);
+  let seasonsAtCeiling = 0;
+  for (let i = completedSeasons.length - 1; i >= 0; i--) {
+    if (completedSeasons[i] === 0) seasonsAtCeiling++;
+    else break;
+  }
+  const revealedPotential = seasonsAtCeiling >= 3 ? currentOvr : null;
+
+  const growthRate = effectiveStart > 0 && seasons.length > 0
+    ? Math.round((seasons[0] / effectiveStart) * 1000) / 1000
+    : null;
+
   return {
-    startOvr: startOvr ?? currentOvr,
+    startOvr: effectiveStart,
     seasons,
+    seasonOvrs,
     careerGrowth: startOvr != null ? currentOvr - startOvr : 0,
     mintAge,
+    seasonsAtCeiling,
+    revealedPotential,
+    growthRate,
   };
 }
 
@@ -393,6 +420,10 @@ async function processClub(clubId, division, totalClubs) {
       currentOvr,
       careerGrowth,
       seasons,
+      seasonOvrs,
+      seasonsAtCeiling,
+      revealedPotential,
+      growthRate,
     });
 
     const newTotal = allPlayers.length;
