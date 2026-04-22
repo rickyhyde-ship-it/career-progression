@@ -267,6 +267,13 @@ async function fetchPlayerDetails(playerId) {
   );
 }
 
+async function fetchPlayerHistory(playerId) {
+  return fetchWithRateLimitHandling(
+    `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/players/${playerId}/experiences/history`,
+    `player history ${playerId}`
+  );
+}
+
 
 async function fetchClubIds() {
   console.log('📡 Fetching club IDs from leaderboard endpoints...');
@@ -317,7 +324,10 @@ async function processClub(clubId, division, totalClubs) {
       console.log(`🔍 Progressions stats sample for player ${playerId}:`, JSON.stringify(stats, null, 2));
     }
 
-    const playerDetails = await fetchPlayerDetails(playerId);
+    const [playerDetails, playerHistory] = await Promise.all([
+      fetchPlayerDetails(playerId),
+      fetchPlayerHistory(playerId),
+    ]);
 
     if (!playerDetails) {
       playerDetailsFailed++;
@@ -333,13 +343,25 @@ async function processClub(clubId, division, totalClubs) {
     const currentOvr = metadata.overall ?? 0;
     const seasonGain = stats?.overall ?? stats?.nbOverallPoints ?? null;
 
+    // Derive career start OVR and total growth from history
+    const historyRecords = Array.isArray(playerHistory) ? playerHistory : [];
+    const ovrValues = historyRecords.map(r => r.values?.overall).filter(v => v != null);
+    const startOvr = ovrValues.length > 0 ? Math.min(...ovrValues) : currentOvr;
+    const careerGrowth = currentOvr - startOvr;
+    const mintAge = historyRecords.length > 0
+      ? Math.min(...historyRecords.map(r => r.values?.age).filter(v => v != null))
+      : null;
+
     allPlayers.push({
       playerId,
       name: metadata.name ?? metadata.fullName ?? metadata.firstName ?? metadata.lastName ?? `Player ${playerId}`,
       position: metadata.positions?.[0] ?? 'N/A',
       age: metadata.age ?? 'N/A',
+      mintAge,
       division,
+      startOvr,
       currentOvr,
+      careerGrowth,
       seasonGain,
     });
 
@@ -404,7 +426,7 @@ console.log(`📊 Clubs: ${clubsChecked} checked, ${clubsFailed} failed`);
 console.log(`👥 Unique players: ${allPlayers.length}`);
 console.log(`⚠️  Player detail failures: ${playerDetailsFailed}`);
 
-allPlayers.sort((a, b) => (b.seasonGain ?? 0) - (a.seasonGain ?? 0));
+allPlayers.sort((a, b) => (b.careerGrowth ?? 0) - (a.careerGrowth ?? 0));
 
 await pushData(allPlayers);
 await clearCheckpoint();
