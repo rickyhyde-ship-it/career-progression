@@ -290,6 +290,51 @@ async function fetchClubIds() {
 let metaDebugLogged = false;
 
 // ==========================================
+// SEASON COMPUTATION
+// ==========================================
+
+function computeSeasons(historyRecords, currentOvr) {
+  if (!Array.isArray(historyRecords) || historyRecords.length === 0) {
+    return { startOvr: currentOvr, seasons: [], careerGrowth: 0, mintAge: null };
+  }
+  const seasons = [];
+  let seasonStartOvr = null;
+  let startOvr = null;
+  let mintAge = null;
+  let prevOvr = null;
+
+  for (const record of historyRecords) {
+    const { reasonType, values } = record;
+    const ovr = values?.overall;
+    const age = values?.age;
+
+    if (reasonType === 'INITIAL') {
+      startOvr = ovr;
+      seasonStartOvr = ovr;
+      mintAge = age;
+    } else if (reasonType === 'NEW_AGE') {
+      if (seasonStartOvr != null && prevOvr != null) {
+        seasons.push(prevOvr - seasonStartOvr);
+      }
+      seasonStartOvr = ovr ?? prevOvr;
+    }
+    if (ovr != null) prevOvr = ovr;
+  }
+
+  // Current (in-progress) season
+  if (seasonStartOvr != null) {
+    seasons.push(currentOvr - seasonStartOvr);
+  }
+
+  return {
+    startOvr: startOvr ?? currentOvr,
+    seasons,
+    careerGrowth: startOvr != null ? currentOvr - startOvr : 0,
+    mintAge,
+  };
+}
+
+// ==========================================
 // CLUB SCANNING
 // ==========================================
 
@@ -333,16 +378,9 @@ async function processClub(clubId, division, totalClubs) {
       console.log('🔍 Metadata keys:', Object.keys(metadata));
     }
     const currentOvr = metadata.overall ?? 0;
-    const seasonGain = stats?.overall ?? stats?.nbOverallPoints ?? null;
 
-    // Derive career start OVR and total growth from history
     const historyRecords = Array.isArray(playerHistory) ? playerHistory : [];
-    const ovrValues = historyRecords.map(r => r.values?.overall).filter(v => v != null);
-    const startOvr = ovrValues.length > 0 ? Math.min(...ovrValues) : currentOvr;
-    const careerGrowth = currentOvr - startOvr;
-    const mintAge = historyRecords.length > 0
-      ? Math.min(...historyRecords.map(r => r.values?.age).filter(v => v != null))
-      : null;
+    const { startOvr, seasons, careerGrowth, mintAge } = computeSeasons(historyRecords, currentOvr);
 
     allPlayers.push({
       playerId,
@@ -354,7 +392,7 @@ async function processClub(clubId, division, totalClubs) {
       startOvr,
       currentOvr,
       careerGrowth,
-      seasonGain,
+      seasons,
     });
 
     const newTotal = allPlayers.length;
