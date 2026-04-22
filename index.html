@@ -169,6 +169,7 @@
     .td-muted { color: #8b949e; }
     .td-gain { color: #3fb950; font-weight: 500; }
     .td-gain-zero { color: #8b949e; }
+    .td-loss { color: #f85149; font-weight: 500; }
     .td-total { color: #3fb950; font-weight: 700; }
 
     .footer {
@@ -266,6 +267,7 @@
   }
 
   let allData = [];
+  let maxSeasons = 0;
   let sortCol = 'careerGrowth';
   let sortDir = 'desc';
   let pollInterval = null;
@@ -347,6 +349,7 @@
   }
 
   function buildTable() {
+    maxSeasons = allData.reduce((m, p) => Math.max(m, (p.seasons ?? []).length), 0);
     buildHeader();
     renderRows();
   }
@@ -362,8 +365,10 @@
       { key: 'startOvr',    label: 'START' },
       { key: 'currentOvr',  label: 'OVR' },
       { key: 'careerGrowth',label: 'CAREER' },
-      { key: 'seasonGain',  label: 'SEASON' },
     ];
+    for (let i = 1; i <= maxSeasons; i++) {
+      fixedCols.push({ key: `s${i}`, label: `S${i}` });
+    }
 
     let html = '<tr>';
     for (const col of fixedCols) html += thHtml(col.key, col.label);
@@ -416,6 +421,8 @@
   }
 
   function getSortValue(p, col) {
+    const sMatch = col.match(/^s(\d+)$/);
+    if (sMatch) return (p.seasons ?? [])[parseInt(sMatch[1], 10) - 1] ?? -Infinity;
     return p[col] ?? '';
   }
 
@@ -431,7 +438,20 @@
 
     document.getElementById('table-body').innerHTML = filtered.map(p => {
       const career = p.careerGrowth ?? 0;
-      const season = p.seasonGain;
+      const seasons = p.seasons ?? [];
+      let seasonCells = '';
+      for (let i = 0; i < maxSeasons; i++) {
+        const gain = seasons[i];
+        if (gain == null) {
+          seasonCells += `<td class="td-muted">—</td>`;
+        } else if (gain > 0) {
+          seasonCells += `<td class="td-gain">+${esc(gain)}</td>`;
+        } else if (gain < 0) {
+          seasonCells += `<td class="td-loss">${esc(gain)}</td>`;
+        } else {
+          seasonCells += `<td class="td-muted">0</td>`;
+        }
+      }
       return `<tr>
         <td class="td-pos">${esc(p.position) || 'N/A'}</td>
         <td class="td-muted">${esc(p.mintAge) || '—'}</td>
@@ -442,7 +462,7 @@
         <td class="td-muted">${esc(p.startOvr) || '—'}</td>
         <td>${esc(p.currentOvr) || '—'}</td>
         <td class="td-total">${career > 0 ? '+' : ''}${esc(career)}</td>
-        <td class="${season != null ? 'td-gain' : 'td-muted'}">${season != null ? (season > 0 ? '+' : '') + esc(season) : '—'}</td>
+        ${seasonCells}
       </tr>`;
     }).join('');
 
@@ -466,19 +486,24 @@
       return 0;
     });
 
-    const headers = ['Position', 'Mint Age', 'Age', 'Player ID', 'Player Name', 'Division', 'Start OVR', 'OVR', 'Career Growth', 'Season Gain'];
-    const rows = filtered.map(p => [
-      p.position ?? '',
-      p.mintAge ?? '',
-      p.age ?? '',
-      p.playerId ?? '',
-      p.name ?? '',
-      p.division != null ? `D${p.division}` : '',
-      p.startOvr ?? '',
-      p.currentOvr ?? '',
-      p.careerGrowth ?? '',
-      p.seasonGain ?? '',
-    ]);
+    const seasonHeaders = Array.from({ length: maxSeasons }, (_, i) => `S${i + 1}`);
+    const headers = ['Position', 'Mint Age', 'Age', 'Player ID', 'Player Name', 'Division', 'Start OVR', 'OVR', 'Career Growth', ...seasonHeaders];
+    const rows = filtered.map(p => {
+      const seasons = p.seasons ?? [];
+      const seasonVals = Array.from({ length: maxSeasons }, (_, i) => seasons[i] ?? '');
+      return [
+        p.position ?? '',
+        p.mintAge ?? '',
+        p.age ?? '',
+        p.playerId ?? '',
+        p.name ?? '',
+        p.division != null ? `D${p.division}` : '',
+        p.startOvr ?? '',
+        p.currentOvr ?? '',
+        p.careerGrowth ?? '',
+        ...seasonVals,
+      ];
+    });
 
     const csv = [headers, ...rows]
       .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
