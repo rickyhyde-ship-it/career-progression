@@ -185,7 +185,7 @@
   <div class="header">
     <div>
       <h1>MFL Progression Tracker</h1>
-      <div class="subtitle">Divisions 1–5 · Career progression</div>
+      <div class="subtitle">Divisions 1–9 · Career progression</div>
     </div>
     <div class="last-updated" id="last-updated" style="display:none">
       Last updated<br><span id="last-updated-time"></span>
@@ -266,7 +266,7 @@
   }
 
   let allData = [];
-  let sortCol = 'seasonGain';
+  let sortCol = 'careerGrowth';
   let sortDir = 'desc';
   let pollInterval = null;
 
@@ -353,13 +353,16 @@
 
   function buildHeader() {
     const fixedCols = [
-      { key: 'position',   label: 'POS' },
-      { key: 'age',        label: 'AGE' },
-      { key: 'playerId',   label: 'ID' },
-      { key: 'name',       label: 'PLAYER' },
-      { key: 'division',   label: 'DIV' },
-      { key: 'currentOvr', label: 'OVR' },
-      { key: 'seasonGain', label: 'SEASON GAIN' },
+      { key: 'position',    label: 'POS' },
+      { key: 'mintAge',     label: 'MINT' },
+      { key: 'age',         label: 'AGE' },
+      { key: 'playerId',    label: 'ID' },
+      { key: 'name',        label: 'PLAYER' },
+      { key: 'division',    label: 'DIV' },
+      { key: 'startOvr',    label: 'START' },
+      { key: 'currentOvr',  label: 'OVR' },
+      { key: 'careerGrowth',label: 'CAREER' },
+      { key: 'seasonGain',  label: 'SEASON' },
     ];
 
     let html = '<tr>';
@@ -404,7 +407,7 @@
     return allData.filter(p => {
       if (divFilter && String(p.division) !== divFilter) return false;
       if (posFilter && p.position !== posFilter) return false;
-      if (minGain > 0 && (p.seasonGain ?? 0) < minGain) return false;
+      if (minGain > 0 && (p.careerGrowth ?? 0) < minGain) return false;
       if (ovrMin > 0 && (p.currentOvr ?? 0) < ovrMin) return false;
       if (ovrMax > 0 && (p.currentOvr ?? 0) > ovrMax) return false;
       if (search && !(p.name ?? '').toLowerCase().includes(search)) return false;
@@ -427,18 +430,19 @@
     });
 
     document.getElementById('table-body').innerHTML = filtered.map(p => {
-      const gain = p.seasonGain;
-      const gainCell = gain == null
-        ? `<td class="td-muted">—</td>`
-        : `<td class="td-total">${gain > 0 ? '+' : ''}${esc(gain)}</td>`;
+      const career = p.careerGrowth ?? 0;
+      const season = p.seasonGain;
       return `<tr>
         <td class="td-pos">${esc(p.position) || 'N/A'}</td>
+        <td class="td-muted">${esc(p.mintAge) || '—'}</td>
         <td class="td-muted">${esc(p.age) || '—'}</td>
         <td class="td-muted" style="font-size:11px">${esc(p.playerId) || '—'}</td>
         <td>${esc(p.name) || '—'}</td>
         <td class="td-muted">${p.division != null ? 'D' + esc(p.division) : '—'}</td>
+        <td class="td-muted">${esc(p.startOvr) || '—'}</td>
         <td>${esc(p.currentOvr) || '—'}</td>
-        ${gainCell}
+        <td class="td-total">${career > 0 ? '+' : ''}${esc(career)}</td>
+        <td class="${season != null ? 'td-gain' : 'td-muted'}">${season != null ? (season > 0 ? '+' : '') + esc(season) : '—'}</td>
       </tr>`;
     }).join('');
 
@@ -462,14 +466,17 @@
       return 0;
     });
 
-    const headers = ['Position', 'Age', 'Player ID', 'Player Name', 'Division', 'OVR', 'Season Gain'];
+    const headers = ['Position', 'Mint Age', 'Age', 'Player ID', 'Player Name', 'Division', 'Start OVR', 'OVR', 'Career Growth', 'Season Gain'];
     const rows = filtered.map(p => [
       p.position ?? '',
+      p.mintAge ?? '',
       p.age ?? '',
       p.playerId ?? '',
       p.name ?? '',
       p.division != null ? `D${p.division}` : '',
+      p.startOvr ?? '',
       p.currentOvr ?? '',
+      p.careerGrowth ?? '',
       p.seasonGain ?? '',
     ]);
 
