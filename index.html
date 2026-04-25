@@ -1065,49 +1065,74 @@
   }
 
   function drawGrowthChart(players) {
-    const valid = players.filter(p => (p.seasonOvrs ?? []).length > 1);
+    const valid = players.filter(p => (p.seasons ?? []).length >= 1);
     if (!valid.length) {
       document.getElementById('pred-chart-container').innerHTML =
         '<p style="color:#8b949e;font-size:12px">OVR trajectory unavailable — run a new scan to collect this data.</p>';
       return;
     }
-    const maxSeas = Math.max(...valid.map(p => p.seasonOvrs.length - 1));
+
+    // Use cumulative gain from S0 (not absolute OVR) so players with different
+    // start OVRs and different career lengths are comparable. A player with only
+    // 5 seasons contributes to S1–S5 without distorting S8+ with survivorship bias.
+    const maxSeas = Math.max(...valid.map(p => p.seasons.length));
+    const MIN_N = Math.max(3, Math.ceil(valid.length * 0.2));
     const points = [];
     for (let i = 0; i <= maxSeas; i++) {
-      const vals = valid.map(p => (p.seasonOvrs ?? [])[i]).filter(v => v != null).sort((a, b) => a - b);
-      if (vals.length) points.push({ i, p25: pct(vals,25), median: pct(vals,50), p75: pct(vals,75) });
+      const vals = valid
+        .map(p => {
+          if (i === 0) return 0;
+          const s = p.seasons ?? [];
+          if (s.length < i) return null; // hasn't reached this season yet
+          return s.slice(0, i).reduce((sum, g) => sum + g, 0);
+        })
+        .filter(v => v != null)
+        .sort((a, b) => a - b);
+      if (vals.length >= MIN_N) {
+        points.push({ i, p25: pct(vals,25), median: pct(vals,50), p75: pct(vals,75), n: vals.length });
+      }
     }
     if (points.length < 2) { document.getElementById('pred-chart-container').innerHTML = ''; return; }
 
-    const W=600, H=160, P={t:12,r:14,b:28,l:38};
+    const lastN = points[points.length - 1].n;
+    const W=600, H=160, P={t:12,r:14,b:28,l:42};
     const cW=W-P.l-P.r, cH=H-P.t-P.b;
-    const minOvr = Math.min(...points.map(d=>d.p25))-1;
-    const maxOvr = Math.max(...points.map(d=>d.p75))+1;
-    const x = i => P.l+(i/maxSeas)*cW;
-    const y = v => P.t+cH-((v-minOvr)/(maxOvr-minOvr||1))*cH;
+    const maxSeasPlotted = points[points.length - 1].i;
+    const minGain = Math.min(0, ...points.map(d=>d.p25));
+    const maxGain = Math.max(...points.map(d=>d.p75));
+    const pad = Math.max(1, Math.round((maxGain - minGain) * 0.05));
+    const lo = minGain - pad, hi = maxGain + pad;
+    const x = i => P.l+(i/maxSeasPlotted)*cW;
+    const y = v => P.t+cH-((v-lo)/(hi-lo||1))*cH;
     const bandTop = points.map(d=>`${x(d.i).toFixed(1)},${y(d.p75).toFixed(1)}`).join(' ');
     const bandBot = [...points].reverse().map(d=>`${x(d.i).toFixed(1)},${y(d.p25).toFixed(1)}`).join(' ');
-    const median = points.map(d=>`${x(d.i).toFixed(1)},${y(d.median).toFixed(1)}`).join(' ');
-    const rawStep=(maxOvr-minOvr)/4;
+    const medLine = points.map(d=>`${x(d.i).toFixed(1)},${y(d.median).toFixed(1)}`).join(' ');
+    const rawStep=(hi-lo)/4;
     const step=Math.max(1,Math.ceil(rawStep/5)*5);
-    const yTicks=[]; for(let v=Math.ceil(minOvr/step)*step;v<=maxOvr;v+=step) yTicks.push(v);
-    const xStep=Math.max(1,Math.ceil(maxSeas/8));
+    const yTicks=[]; for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step) yTicks.push(v);
+    const xStep=Math.max(1,Math.ceil(maxSeasPlotted/8));
     const xTicks=points.filter(d=>d.i%xStep===0);
+    const suffix = lastN < valid.length
+      ? ` · <tspan fill="#d29922">${lastN} of ${valid.length} players have S${maxSeasPlotted}+ data</tspan>`
+      : '';
 
     document.getElementById('pred-chart-container').innerHTML = `
       <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">
-        OVR Trajectory — median + P25–P75 band · ${valid.length} players
+        Cumulative OVR gain — median + P25–P75 band · ${valid.length} players${lastN < valid.length ? ` (fades where data thins)` : ''}
       </div>
       <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
         <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.18"/>
-          <stop offset="100%" stop-color="#58a6ff" stop-opacity="0.04"/>
+          <stop offset="0%" stop-color="#3fb950" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#3fb950" stop-opacity="0.04"/>
         </linearGradient></defs>
         ${yTicks.map(v=>`<line x1="${P.l}" y1="${y(v).toFixed(1)}" x2="${W-P.r}" y2="${y(v).toFixed(1)}" stroke="#21262d" stroke-width="1"/>
-          <text x="${P.l-4}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" fill="#8b949e" font-size="10">${v}</text>`).join('')}
+          <text x="${P.l-4}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" fill="#8b949e" font-size="10">${v>=0?'+':''}${v}</text>`).join('')}
         <polygon points="${bandTop} ${bandBot}" fill="url(#bg)"/>
-        <polyline points="${median}" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linejoin="round"/>
-        ${xTicks.map(d=>`<text x="${x(d.i).toFixed(1)}" y="${H-6}" text-anchor="middle" fill="#8b949e" font-size="10">S${d.i}</text>`).join('')}
+        <polyline points="${medLine}" fill="none" stroke="#3fb950" stroke-width="2" stroke-linejoin="round"/>
+        ${xTicks.map(d=>{
+          const fade = d.n < valid.length * 0.5 ? ` opacity="${(0.4 + 0.6*(d.n/valid.length)).toFixed(2)}"` : '';
+          return `<text x="${x(d.i).toFixed(1)}" y="${H-6}" text-anchor="middle" fill="#8b949e" font-size="10"${fade}>S${d.i}</text>`;
+        }).join('')}
         <line x1="${P.l}" y1="${P.t}" x2="${P.l}" y2="${H-P.b}" stroke="#30363d" stroke-width="1"/>
         <line x1="${P.l}" y1="${H-P.b}" x2="${W-P.r}" y2="${H-P.b}" stroke="#30363d" stroke-width="1"/>
       </svg>`;
