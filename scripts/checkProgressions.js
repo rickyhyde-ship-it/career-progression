@@ -200,10 +200,25 @@ function gitPushGhPages(message) {
     console.warn(`⚠️  git commit failed: ${out || err.message}`);
     return;
   }
-  try {
-    execSync(`git -C ${GH_PAGES_DIR} push origin gh-pages`, { stdio: 'pipe' });
-  } catch (err) {
-    console.warn(`⚠️  git push failed: ${err.stderr?.toString() ?? err.message}`);
+  // Retry up to 3 times — concurrent division runs can cause non-fast-forward rejections
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      execSync(`git -C ${GH_PAGES_DIR} push origin gh-pages`, { stdio: 'pipe' });
+      return;
+    } catch (err) {
+      const msg = err.stderr?.toString() ?? err.message;
+      if ((msg.includes('fetch first') || msg.includes('rejected') || msg.includes('non-fast-forward')) && attempt < 3) {
+        try {
+          execSync(`git -C ${GH_PAGES_DIR} pull --rebase origin gh-pages`, { stdio: 'pipe' });
+        } catch (pullErr) {
+          console.warn(`⚠️  git pull --rebase failed: ${pullErr.stderr?.toString() ?? pullErr.message}`);
+          return;
+        }
+      } else {
+        console.warn(`⚠️  git push failed: ${msg}`);
+        return;
+      }
+    }
   }
 }
 
