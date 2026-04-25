@@ -26,75 +26,78 @@
     }
     .header h1 { color: #58a6ff; font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
     .header .subtitle { color: #8b949e; font-size: 13px; margin-top: 3px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
     .header .last-updated { color: #8b949e; font-size: 12px; text-align: right; }
     .header .last-updated span { color: #e6edf3; }
 
-    #progress-section {
+    /* Division Panel */
+    .div-panel {
       background: #161b22;
       border: 1px solid #30363d;
       border-radius: 8px;
-      padding: 14px 18px;
       margin-bottom: 18px;
-      display: none;
+      overflow: hidden;
     }
-    #progress-section.visible { display: block; }
-    .progress-header {
+    .div-panel-header {
+      padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      border-bottom: 1px solid #30363d;
     }
-    .progress-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .div-panel-title { font-weight: 700; font-size: 14px; color: #e6edf3; }
+    .div-panel-actions { display: flex; gap: 8px; align-items: center; }
+
+    .run-all-btn {
+      background: #238636;
+      border: 1px solid #2ea043;
+      color: #fff;
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-size: 12px;
       font-weight: 600;
-      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
     }
-    .pulse {
-      width: 8px;
-      height: 8px;
-      background: #3fb950;
-      border-radius: 50%;
-      animation: pulse 1.4s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.85)} }
-    .progress-eta { color: #8b949e; font-size: 13px; }
-    .progress-eta span { color: #e6edf3; }
-    .progress-track {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .progress-bar-bg {
-      flex: 1;
+    .run-all-btn:hover { background: #2ea043; }
+
+    .settings-btn {
       background: #21262d;
-      border-radius: 4px;
-      height: 10px;
-      overflow: hidden;
-    }
-    .progress-bar-fill {
-      background: linear-gradient(90deg, #238636, #3fb950);
-      height: 10px;
-      border-radius: 4px;
-      transition: width 0.6s ease;
-      width: 0%;
-    }
-    .progress-count { color: #8b949e; font-size: 12px; white-space: nowrap; }
-    .progress-pct { color: #3fb950; font-weight: 700; font-size: 13px; min-width: 38px; text-align: right; }
-
-    #empty-state {
-      background: #161b22;
       border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 48px 24px;
-      text-align: center;
       color: #8b949e;
-      display: none;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
     }
-    #empty-state.visible { display: block; }
-    #empty-state h2 { color: #e6edf3; margin-bottom: 8px; font-size: 16px; }
+    .settings-btn:hover { color: #e6edf3; border-color: #58a6ff; }
 
+    .div-run-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .div-run-btn:hover { border-color: #3fb950; color: #3fb950; }
+
+    .badge {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-run { background: #1f3147; color: #58a6ff; border: 1px solid #1f6feb; }
+    .badge-done { background: #0f2d1a; color: #3fb950; border: 1px solid #238636; }
+    .badge-idle { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+
+    /* Filter section */
     #filter-section {
       display: none;
       gap: 10px;
@@ -104,7 +107,7 @@
     }
     #filter-section.visible { display: flex; }
 
-    select, input[type="text"] {
+    select, input[type="text"], input[type="number"] {
       background: #161b22;
       border: 1px solid #30363d;
       color: #e6edf3;
@@ -114,9 +117,10 @@
       outline: none;
       transition: border-color 0.15s;
     }
-    select:focus, input[type="text"]:focus { border-color: #58a6ff; }
+    select:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: #58a6ff; }
     #search-input { flex: 1; min-width: 180px; }
 
+    /* Table */
     #table-section { display: none; }
     #table-section.visible { display: block; }
 
@@ -159,16 +163,11 @@
     tbody tr:nth-child(even) { background: #0d1117; }
     tbody tr:hover { background: #1c2128; }
 
-    td {
-      padding: 6px 10px;
-      white-space: nowrap;
-      color: #e6edf3;
-    }
+    td { padding: 6px 10px; white-space: nowrap; color: #e6edf3; }
 
     .td-pos { color: #79c0ff; font-weight: 600; font-size: 11px; }
     .td-muted { color: #8b949e; }
     .td-gain { color: #3fb950; font-weight: 500; }
-    .td-gain-zero { color: #8b949e; }
     .td-loss { color: #f85149; font-weight: 500; }
     .td-total { color: #3fb950; font-weight: 700; }
 
@@ -212,11 +211,7 @@
       letter-spacing: 0.5px;
       margin-bottom: 6px;
     }
-    .pred-range {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .pred-range { display: flex; align-items: center; gap: 6px; }
     .pred-range span { color: #8b949e; font-size: 12px; }
     input[type="number"].pred-num {
       background: #161b22;
@@ -250,17 +245,8 @@
       align-items: center;
       margin-top: 14px;
     }
-    .season-filter-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .season-filter-item label {
-      color: #8b949e;
-      font-size: 11px;
-      font-weight: 600;
-      min-width: 20px;
-    }
+    .season-filter-item { display: flex; align-items: center; gap: 5px; }
+    .season-filter-item label { color: #8b949e; font-size: 11px; font-weight: 600; min-width: 20px; }
     .pred-run-btn {
       background: #238636;
       border: 1px solid #2ea043;
@@ -270,7 +256,6 @@
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s;
     }
     .pred-run-btn:hover { background: #2ea043; }
     .pred-clear-btn {
@@ -283,16 +268,37 @@
       cursor: pointer;
     }
     .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
-    .stat-pill {
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 8px 14px;
-      min-width: 80px;
-    }
+    .stat-pill { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 14px; min-width: 80px; }
     .stat-pill-label { color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .stat-pill-val { color: #3fb950; font-size: 17px; font-weight: 700; }
     .stat-pill-val.blue { color: #58a6ff; }
+
+    /* PAT Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 24px;
+      width: 480px;
+      max-width: 95vw;
+    }
+    .modal-box h3 { font-size: 16px; margin-bottom: 8px; color: #e6edf3; }
+    .modal-box p { color: #8b949e; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .modal-box input { width: 100%; margin-bottom: 12px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-btn { background: #238636; border: 1px solid #2ea043; color: #fff; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .modal-btn.secondary { background: #21262d; border-color: #30363d; color: #8b949e; }
+    .modal-btn.danger { background: #b62324; border-color: #f85149; }
   </style>
 </head>
 <body>
@@ -301,55 +307,59 @@
   <div class="header">
     <div>
       <h1>MFL Progression Tracker</h1>
-      <div class="subtitle">Divisions 1–9 · Career progression</div>
+      <div class="subtitle">Divisions 1–10 · Career progression</div>
     </div>
-    <div class="last-updated" id="last-updated" style="display:none">
-      Last updated<br><span id="last-updated-time"></span>
+    <div class="header-right">
+      <div class="last-updated" id="last-updated" style="display:none">
+        Last updated<br><span id="last-updated-time"></span>
+      </div>
     </div>
   </div>
 
-  <div id="progress-section">
-    <div class="progress-header">
-      <div class="progress-label">
-        <div class="pulse"></div>
-        Scanning in progress
+  <!-- Division Control Panel -->
+  <div class="div-panel">
+    <div class="div-panel-header">
+      <div class="div-panel-title">Division Scans</div>
+      <div class="div-panel-actions">
+        <button class="run-all-btn" onclick="triggerAll()">▶ Run All Divisions</button>
+        <button class="settings-btn" onclick="showPatModal(null)">⚙ Token</button>
       </div>
-      <div class="progress-eta">ETA: <span id="eta-value">—</span></div>
     </div>
-    <div class="progress-track">
-      <div class="progress-bar-bg">
-        <div class="progress-bar-fill" id="progress-fill"></div>
-      </div>
-      <div class="progress-count" id="progress-count">0 / 0</div>
-      <div class="progress-pct" id="progress-pct">0%</div>
+    <div style="overflow:auto">
+      <table style="width:100%; border-collapse:collapse; font-size:13px">
+        <thead>
+          <tr>
+            <th style="padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:1px solid #30363d; white-space:nowrap">DIV</th>
+            <th style="padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:1px solid #30363d; white-space:nowrap">STATUS</th>
+            <th style="padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:1px solid #30363d; white-space:nowrap; min-width:200px">PROGRESS</th>
+            <th style="padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:1px solid #30363d; white-space:nowrap">PLAYERS</th>
+            <th style="padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:1px solid #30363d; white-space:nowrap">LAST SCAN</th>
+            <th style="padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:1px solid #30363d; white-space:nowrap">ELAPSED</th>
+            <th style="padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:1px solid #30363d; white-space:nowrap"></th>
+          </tr>
+        </thead>
+        <tbody id="div-tbody"></tbody>
+      </table>
     </div>
   </div>
 
-  <div id="empty-state">
-    <h2>No scan data yet</h2>
-    <p>Trigger the GitHub Action to start a scan.</p>
+  <div id="empty-state" style="display:none; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:48px 24px; text-align:center; color:#8b949e; margin-bottom:18px">
+    <h2 style="color:#e6edf3; margin-bottom:8px; font-size:16px">No scan data yet</h2>
+    <p>Use the Run buttons above to start a division scan.</p>
   </div>
 
   <div id="filter-section">
     <select id="filter-div">
       <option value="">All Divisions</option>
-      <option value="1">D1</option>
-      <option value="2">D2</option>
-      <option value="3">D3</option>
-      <option value="4">D4</option>
-      <option value="5">D5</option>
-      <option value="6">D6</option>
-      <option value="7">D7</option>
-      <option value="8">D8</option>
-      <option value="9">D9</option>
+      <option value="1">D1</option><option value="2">D2</option><option value="3">D3</option>
+      <option value="4">D4</option><option value="5">D5</option><option value="6">D6</option>
+      <option value="7">D7</option><option value="8">D8</option><option value="9">D9</option>
       <option value="10">D10</option>
     </select>
     <select id="filter-pos">
       <option value="">All Positions</option>
-      <option value="GK">GK</option>
-      <option value="DEF">DEF</option>
-      <option value="MID">MID</option>
-      <option value="ATT">ATT</option>
+      <option value="GK">GK</option><option value="DEF">DEF</option>
+      <option value="MID">MID</option><option value="ATT">ATT</option>
     </select>
     <input type="number" id="filter-ovr-min" placeholder="Min +OVR" min="0" style="width:100px">
     <input type="number" id="filter-ovr-min2" placeholder="Min OVR" min="0" style="width:90px">
@@ -379,7 +389,6 @@
         <span id="pred-toggle-icon" style="color:#8b949e; font-size:16px">▼</span>
       </div>
       <div id="pred-body" class="pred-body">
-
         <div class="pred-input-grid">
           <div>
             <div class="pred-field-label">Start OVR range</div>
@@ -402,18 +411,15 @@
             <div id="pred-pos-btns" style="display:flex; gap:6px; flex-wrap:wrap"></div>
           </div>
         </div>
-
         <div style="margin-top:14px">
-          <div class="pred-field-label">Season progression ranges <span style="font-weight:400; text-transform:none; letter-spacing:0">(leave blank to skip)</span></div>
+          <div class="pred-field-label">Season progression ranges <span style="font-weight:400;text-transform:none;letter-spacing:0">(leave blank to skip)</span></div>
           <div class="season-filter-row" id="pred-season-filters"></div>
         </div>
-
         <div style="margin-top:16px; display:flex; gap:10px; align-items:center">
           <button class="pred-run-btn" onclick="runPrediction()">Find Matches</button>
           <button class="pred-clear-btn" onclick="clearPrediction()">Clear</button>
           <span style="color:#8b949e; font-size:12px" id="pred-pool-info"></span>
         </div>
-
         <div id="pred-results" style="display:none; margin-top:20px; border-top:1px solid #21262d; padding-top:16px">
           <div id="pred-match-count" style="font-size:14px; margin-bottom:14px"></div>
           <div class="stat-pills" id="pred-stats"></div>
@@ -421,107 +427,334 @@
           <div style="color:#8b949e; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px">Closest Matches</div>
           <div class="table-wrapper" id="pred-matches-table"></div>
         </div>
-
       </div>
     </div>
   </div>
 
 </div>
 
+<!-- PAT Modal -->
+<div class="modal-overlay" id="pat-modal">
+  <div class="modal-box">
+    <h3>GitHub Personal Access Token</h3>
+    <p>Required to trigger GitHub Actions from this page. Create a token at <strong>GitHub → Settings → Developer settings → Personal access tokens</strong> with the <strong>workflow</strong> scope. It is stored only in your browser.</p>
+    <input type="password" id="pat-input" placeholder="ghp_..." style="font-family:monospace">
+    <div class="modal-actions">
+      <button class="modal-btn danger" onclick="clearPat()" style="margin-right:auto">Clear saved token</button>
+      <button class="modal-btn secondary" onclick="closePatModal()">Cancel</button>
+      <button class="modal-btn" onclick="savePat()">Save & trigger</button>
+    </div>
+  </div>
+</div>
+
 <script>
+  // ==========================================
+  // CONFIG
+  // ==========================================
+  const REPO = 'rickyhyde-ship-it/career-progression';
+  const DIVISIONS = [1,2,3,4,5,6,7,8,9,10];
+
   function esc(v) {
     if (v == null) return '';
-    return String(v)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  // ==========================================
+  // STATE
+  // ==========================================
   let allData = [];
   let maxSeasons = 0;
   let sortCol = 'careerGrowth';
   let sortDir = 'desc';
   let pollInterval = null;
+  let timerInterval = null;
+  let divMeta = {}; // d -> { updatedAt, clubs, playerCount, status, progress }
+  let patPendingDiv = null;
 
+  // ==========================================
+  // INIT
+  // ==========================================
   async function init() {
-    try {
-      const res = await fetch('progress.json?_=' + Date.now());
-      if (res.ok) {
-        const prog = await res.json();
-        if (prog.running) {
-          showProgress(prog);
-          pollInterval = setInterval(pollProgress, 3000);
-          return;
-        }
-      }
-    } catch { /* no progress.json */ }
-    loadData();
+    renderDivisionPanel();
+    startTimers();
+    await loadAllData();
+    startPolling();
   }
 
-  async function pollProgress() {
-    try {
-      const res = await fetch('progress.json?_=' + Date.now());
-      if (res.ok) {
-        const prog = await res.json();
-        if (prog.running) {
-          showProgress(prog);
-          return;
+  // ==========================================
+  // DATA LOADING
+  // ==========================================
+  async function loadAllData() {
+    const ts = Date.now();
+    const results = await Promise.all(
+      DIVISIONS.map(d =>
+        fetch(`data-d${d}.json?_=${ts}`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    );
+
+    const playerMap = new Map();
+    const playerTime = new Map();
+    let latestUpdate = null;
+
+    results.forEach((json, i) => {
+      const d = DIVISIONS[i];
+      if (!json) return;
+      const wasRunning = divMeta[d]?.status === 'running';
+      divMeta[d] = {
+        ...divMeta[d],
+        updatedAt: json.updatedAt,
+        clubs: json.clubs,
+        playerCount: (json.players ?? []).length,
+        status: wasRunning ? 'running' : 'complete',
+      };
+      if (json.updatedAt && (!latestUpdate || json.updatedAt > latestUpdate)) {
+        latestUpdate = json.updatedAt;
+      }
+      for (const p of (json.players ?? [])) {
+        const existing = playerTime.get(p.playerId) ?? '0';
+        if (!playerMap.has(p.playerId) || (json.updatedAt ?? '0') > existing) {
+          playerMap.set(p.playerId, p);
+          playerTime.set(p.playerId, json.updatedAt ?? '0');
         }
       }
-    } catch { /* ignore */ }
-    clearInterval(pollInterval);
-    pollInterval = null;
-    document.getElementById('progress-section').classList.remove('visible');
-    loadData();
-  }
+    });
 
-  async function loadData() {
-    try {
-      const res = await fetch('data.json?_=' + Date.now());
-      if (!res.ok) throw new Error('not found');
-      const json = await res.json();
-      allData = json.players ?? [];
+    allData = [...playerMap.values()];
 
-      if (json.updatedAt) {
-        const dt = new Date(json.updatedAt);
-        document.getElementById('last-updated-time').textContent =
-          dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
-          ' ' + dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('last-updated').style.display = 'block';
-      }
+    if (latestUpdate) {
+      const dt = new Date(latestUpdate);
+      document.getElementById('last-updated-time').textContent =
+        dt.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) +
+        ' ' + dt.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+      document.getElementById('last-updated').style.display = 'block';
+    }
 
+    const hasData = allData.length > 0;
+    document.getElementById('empty-state').style.display = hasData ? 'none' : 'block';
+    document.getElementById('filter-section').classList.toggle('visible', hasData);
+    document.getElementById('table-section').classList.toggle('visible', hasData);
+    document.getElementById('prediction-section').style.display = hasData ? 'block' : 'none';
+
+    if (hasData) {
       buildTable();
-      document.getElementById('filter-section').classList.add('visible');
-      document.getElementById('table-section').classList.add('visible');
-      document.getElementById('prediction-section').style.display = 'block';
-      initPrediction();
-    } catch {
-      document.getElementById('empty-state').classList.add('visible');
+      if (!predInitDone) initPrediction();
+    }
+
+    renderDivisionPanel();
+  }
+
+  // ==========================================
+  // POLLING
+  // ==========================================
+  async function pollAll() {
+    const ts = Date.now();
+    const results = await Promise.all(
+      DIVISIONS.map(d =>
+        fetch(`progress-d${d}.json?_=${ts}`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    );
+
+    let anyRunning = false;
+    results.forEach((prog, i) => {
+      const d = DIVISIONS[i];
+      if (prog?.running) {
+        anyRunning = true;
+        divMeta[d] = { ...divMeta[d], progress: prog, status: 'running' };
+      } else if (divMeta[d]?.status === 'running') {
+        divMeta[d] = { ...divMeta[d], progress: null };
+        // Don't reset status here — loadAllData will set it to complete
+      }
+    });
+
+    renderDivisionPanel();
+    if (anyRunning) await loadAllData();
+  }
+
+  function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+    pollAll();
+    pollInterval = setInterval(pollAll, 5000);
+  }
+
+  // ==========================================
+  // TIMERS
+  // ==========================================
+  function startTimers() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+      DIVISIONS.forEach(d => {
+        const el = document.getElementById(`timer-d${d}`);
+        if (el) el.textContent = getTimerStr(d);
+      });
+    }, 1000);
+  }
+
+  function getTimerStr(d) {
+    const t = localStorage.getItem(`trigger-d${d}`);
+    if (!t) return '—';
+    const secs = Math.floor((Date.now() - parseInt(t)) / 1000);
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  // ==========================================
+  // DIVISION PANEL
+  // ==========================================
+  function renderDivisionPanel() {
+    const tbody = document.getElementById('div-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = DIVISIONS.map(d => {
+      const meta = divMeta[d] ?? {};
+      const prog = meta.progress;
+      const isRunning = meta.status === 'running';
+      const isComplete = !isRunning && (meta.updatedAt || meta.playerCount);
+
+      const statusBadge = isRunning
+        ? '<span class="badge badge-run">● Running</span>'
+        : isComplete
+          ? '<span class="badge badge-done">✓ Complete</span>'
+          : '<span class="badge badge-idle">—</span>';
+
+      let progressCell;
+      if (isRunning && prog) {
+        const pct = prog.total > 0 ? Math.min(100, Math.round(prog.scanned / prog.total * 100)) : 0;
+        const eta = prog.etaSeconds > 0 ? formatEta(prog.etaSeconds) : '…';
+        progressCell = `
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;background:#21262d;border-radius:3px;height:6px;min-width:100px">
+              <div style="background:#3fb950;height:6px;border-radius:3px;width:${pct}%;transition:width 0.5s"></div>
+            </div>
+            <span style="font-size:11px;color:#8b949e;white-space:nowrap">${prog.scanned}/${prog.total} · ETA ${eta}</span>
+          </div>`;
+      } else if (meta.clubs) {
+        progressCell = `<span style="color:#8b949e;font-size:12px">${meta.clubs} clubs scanned</span>`;
+      } else {
+        progressCell = '<span style="color:#8b949e;font-size:12px">—</span>';
+      }
+
+      const players = meta.playerCount != null ? meta.playerCount.toLocaleString() : '—';
+      const updated = meta.updatedAt
+        ? new Date(meta.updatedAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' })
+        : '—';
+
+      const actionCell = isRunning
+        ? '<span style="color:#3fb950;font-size:11px">In progress…</span>'
+        : `<button class="div-run-btn" onclick="triggerDivision(${d})">▶ Run</button>`;
+
+      return `<tr style="border-bottom:1px solid #21262d">
+        <td style="padding:8px 12px;font-weight:700;color:#58a6ff">D${d}</td>
+        <td style="padding:8px 12px">${statusBadge}</td>
+        <td style="padding:8px 12px">${progressCell}</td>
+        <td style="padding:8px 12px;color:#8b949e;font-size:12px">${players}</td>
+        <td style="padding:8px 12px;color:#8b949e;font-size:12px">${updated}</td>
+        <td style="padding:8px 12px;color:#8b949e;font-size:12px;font-family:monospace" id="timer-d${d}">${getTimerStr(d)}</td>
+        <td style="padding:8px 12px">${actionCell}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function formatEta(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${String(s).padStart(2,'0')}s`;
+    return `${s}s`;
+  }
+
+  // ==========================================
+  // GITHUB TRIGGER
+  // ==========================================
+  async function triggerDivision(d) {
+    const pat = localStorage.getItem('gh-pat');
+    if (!pat) { showPatModal(d); return; }
+    await doTrigger(d, pat);
+  }
+
+  async function triggerAll() {
+    const pat = localStorage.getItem('gh-pat');
+    if (!pat) { showPatModal('all'); return; }
+    for (const d of DIVISIONS) {
+      await doTrigger(d, pat);
+      await new Promise(r => setTimeout(r, 300));
     }
   }
 
-  function showProgress(prog) {
-    document.getElementById('progress-section').classList.add('visible');
-    const pct = prog.total > 0 ? Math.round((prog.scanned / prog.total) * 100) : 0;
-    document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('progress-count').textContent =
-      prog.scanned.toLocaleString() + ' / ' + prog.total.toLocaleString();
-    document.getElementById('progress-pct').textContent = pct + '%';
-    if (prog.etaSeconds > 0) {
-      const h = Math.floor(prog.etaSeconds / 3600);
-      const m = Math.floor((prog.etaSeconds % 3600) / 60);
-      const s = prog.etaSeconds % 60;
-      const parts = [];
-      if (h > 0) parts.push(`${h}h`);
-      parts.push(`${m}m`);
-      parts.push(`${String(s).padStart(2, '0')}s`);
-      document.getElementById('eta-value').textContent = parts.join(' ');
-    } else {
-      document.getElementById('eta-value').textContent = '—';
+  async function doTrigger(d, pat) {
+    try {
+      const resp = await fetch(
+        `https://api.github.com/repos/${REPO}/actions/workflows/check-d${d}.yml/dispatches`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${pat}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ref: 'main' }),
+        }
+      );
+      if (resp.status === 204) {
+        localStorage.setItem(`trigger-d${d}`, Date.now());
+        divMeta[d] = { ...divMeta[d], status: 'running', progress: null };
+        renderDivisionPanel();
+      } else if (resp.status === 401 || resp.status === 403) {
+        localStorage.removeItem('gh-pat');
+        showPatModal(d);
+      } else {
+        console.error(`D${d} trigger failed: ${resp.status}`);
+      }
+    } catch (e) {
+      console.error(`D${d} trigger error: ${e.message}`);
     }
   }
 
+  // ==========================================
+  // PAT MODAL
+  // ==========================================
+  function showPatModal(pendingDiv) {
+    patPendingDiv = pendingDiv;
+    const existing = localStorage.getItem('gh-pat');
+    if (existing) document.getElementById('pat-input').value = existing;
+    document.getElementById('pat-modal').classList.add('open');
+  }
+
+  function closePatModal() {
+    document.getElementById('pat-modal').classList.remove('open');
+    patPendingDiv = null;
+  }
+
+  async function savePat() {
+    const val = document.getElementById('pat-input').value.trim();
+    if (!val) return;
+    localStorage.setItem('gh-pat', val);
+    closePatModal();
+    if (patPendingDiv === 'all') {
+      await triggerAll();
+    } else if (patPendingDiv != null) {
+      await doTrigger(patPendingDiv, val);
+    }
+  }
+
+  function clearPat() {
+    localStorage.removeItem('gh-pat');
+    document.getElementById('pat-input').value = '';
+  }
+
+  document.getElementById('pat-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('pat-modal')) closePatModal();
+  });
+
+  // ==========================================
+  // PLAYER TABLE
+  // ==========================================
   function buildTable() {
     maxSeasons = allData.reduce((m, p) => Math.max(m, (p.seasons ?? []).length), 0);
     buildHeader();
@@ -529,23 +762,21 @@
   }
 
   function buildHeader() {
-    const fixedCols = [
-      { key: 'position',    label: 'POS' },
-      { key: 'mintAge',     label: 'MINT' },
-      { key: 'age',         label: 'AGE' },
-      { key: 'playerId',    label: 'ID' },
-      { key: 'name',        label: 'PLAYER' },
-      { key: 'division',    label: 'DIV' },
-      { key: 'startOvr',    label: 'START' },
-      { key: 'currentOvr',  label: 'OVR' },
-      { key: 'careerGrowth',label: 'CAREER' },
+    const cols = [
+      { key: 'position',     label: 'POS' },
+      { key: 'mintAge',      label: 'MINT' },
+      { key: 'age',          label: 'AGE' },
+      { key: 'playerId',     label: 'ID' },
+      { key: 'name',         label: 'PLAYER' },
+      { key: 'division',     label: 'DIV' },
+      { key: 'startOvr',     label: 'START' },
+      { key: 'currentOvr',   label: 'OVR' },
+      { key: 'careerGrowth', label: 'CAREER' },
     ];
-    for (let i = 1; i <= maxSeasons; i++) {
-      fixedCols.push({ key: `s${i}`, label: `S${i}` });
-    }
+    for (let i = 1; i <= maxSeasons; i++) cols.push({ key: `s${i}`, label: `S${i}` });
 
     let html = '<tr>';
-    for (const col of fixedCols) html += thHtml(col.key, col.label);
+    for (const col of cols) html += `<th data-col="${col.key}">${col.label}</th>`;
     html += '</tr>';
     document.getElementById('table-head').innerHTML = html;
 
@@ -558,17 +789,12 @@
         renderRows();
       });
     });
-
     updateSortClasses();
-  }
-
-  function thHtml(key, label) {
-    return `<th data-col="${key}">${label}</th>`;
   }
 
   function updateSortClasses() {
     document.querySelectorAll('#table-head th').forEach(th => {
-      th.classList.remove('sort-active', 'sort-asc', 'sort-desc');
+      th.classList.remove('sort-active','sort-asc','sort-desc');
       if (th.dataset.col === sortCol) {
         th.classList.add('sort-active', sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
       }
@@ -576,12 +802,12 @@
   }
 
   function getFilteredData() {
-    const divFilter  = document.getElementById('filter-div').value;
-    const posFilter  = document.getElementById('filter-pos').value;
-    const minGain    = parseInt(document.getElementById('filter-ovr-min').value) || 0;
-    const ovrMin     = parseInt(document.getElementById('filter-ovr-min2').value) || 0;
-    const ovrMax     = parseInt(document.getElementById('filter-ovr-max').value) || 0;
-    const search     = document.getElementById('search-input').value.toLowerCase().trim();
+    const divFilter = document.getElementById('filter-div').value;
+    const posFilter = document.getElementById('filter-pos').value;
+    const minGain   = parseInt(document.getElementById('filter-ovr-min').value) || 0;
+    const ovrMin    = parseInt(document.getElementById('filter-ovr-min2').value) || 0;
+    const ovrMax    = parseInt(document.getElementById('filter-ovr-max').value) || 0;
+    const search    = document.getElementById('search-input').value.toLowerCase().trim();
 
     return allData.filter(p => {
       if (divFilter && String(p.division) !== divFilter) return false;
@@ -603,8 +829,7 @@
   function renderRows() {
     const filtered = getFilteredData();
     filtered.sort((a, b) => {
-      const av = getSortValue(a, sortCol);
-      const bv = getSortValue(b, sortCol);
+      const av = getSortValue(a, sortCol), bv = getSortValue(b, sortCol);
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
       if (av > bv) return sortDir === 'asc' ? 1 : -1;
       return 0;
@@ -615,16 +840,11 @@
       const seasons = p.seasons ?? [];
       let seasonCells = '';
       for (let i = 0; i < maxSeasons; i++) {
-        const gain = seasons[i];
-        if (gain == null) {
-          seasonCells += `<td class="td-muted">—</td>`;
-        } else if (gain > 0) {
-          seasonCells += `<td class="td-gain">+${esc(gain)}</td>`;
-        } else if (gain < 0) {
-          seasonCells += `<td class="td-loss">${esc(gain)}</td>`;
-        } else {
-          seasonCells += `<td class="td-muted">0</td>`;
-        }
+        const g = seasons[i];
+        if (g == null)  seasonCells += '<td class="td-muted">—</td>';
+        else if (g > 0) seasonCells += `<td class="td-gain">+${esc(g)}</td>`;
+        else if (g < 0) seasonCells += `<td class="td-loss">${esc(g)}</td>`;
+        else            seasonCells += '<td class="td-muted">0</td>';
       }
       return `<tr>
         <td class="td-pos">${esc(p.position) || 'N/A'}</td>
@@ -646,58 +866,38 @@
       `Showing ${filtered.length.toLocaleString()} of ${allData.length.toLocaleString()} players`;
   }
 
-  ['filter-div', 'filter-pos', 'filter-ovr-min', 'filter-ovr-min2', 'filter-ovr-max', 'search-input'].forEach(id => {
+  ['filter-div','filter-pos','filter-ovr-min','filter-ovr-min2','filter-ovr-max','search-input'].forEach(id => {
     document.getElementById(id).addEventListener('input', renderRows);
   });
 
   function exportCsv() {
     const filtered = getFilteredData();
     filtered.sort((a, b) => {
-      const av = getSortValue(a, sortCol);
-      const bv = getSortValue(b, sortCol);
+      const av = getSortValue(a, sortCol), bv = getSortValue(b, sortCol);
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
       if (av > bv) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
-
     const seasonHeaders = Array.from({ length: maxSeasons }, (_, i) => `S${i + 1}`);
-    const headers = ['Position', 'Mint Age', 'Age', 'Player ID', 'Player Name', 'Division', 'Start OVR', 'OVR', 'Career Growth', ...seasonHeaders];
+    const headers = ['Position','Mint Age','Age','Player ID','Player Name','Division','Start OVR','OVR','Career Growth',...seasonHeaders];
     const rows = filtered.map(p => {
-      const seasons = p.seasons ?? [];
-      const seasonVals = Array.from({ length: maxSeasons }, (_, i) => seasons[i] ?? '');
+      const seas = p.seasons ?? [];
       return [
-        p.position ?? '',
-        p.mintAge ?? '',
-        p.age ?? '',
-        p.playerId ?? '',
-        p.name ?? '',
-        p.division != null ? `D${p.division}` : '',
-        p.startOvr ?? '',
-        p.currentOvr ?? '',
-        p.careerGrowth ?? '',
-        ...seasonVals,
+        p.position ?? '', p.mintAge ?? '', p.age ?? '', p.playerId ?? '', p.name ?? '',
+        p.division != null ? `D${p.division}` : '', p.startOvr ?? '', p.currentOvr ?? '', p.careerGrowth ?? '',
+        ...Array.from({ length: maxSeasons }, (_, i) => seas[i] ?? ''),
       ];
     });
-
-    const csv = [headers, ...rows]
-      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
+    const csv = [headers,...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
     const a = document.createElement('a');
-    a.href = url;
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     a.download = `mfl-progression-${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
-    URL.revokeObjectURL(url);
   }
-
-  init();
 
   // ==========================================
   // PREDICTION MODEL
   // ==========================================
-
   const PRED_SEASONS = 5;
   const MIN_CAREER_SEASONS = 8;
   let predOpen = true;
@@ -734,9 +934,8 @@
     if (predInitDone) return;
     predInitDone = true;
 
-    // Position buttons
     const posContainer = document.getElementById('pred-pos-btns');
-    ['GK', 'DEF', 'MID', 'ATT'].forEach(cat => {
+    ['GK','DEF','MID','ATT'].forEach(cat => {
       const btn = document.createElement('button');
       btn.className = 'pos-btn';
       btn.dataset.pos = cat;
@@ -745,7 +944,6 @@
       posContainer.appendChild(btn);
     });
 
-    // Season range inputs S1–S5
     const seasonsContainer = document.getElementById('pred-season-filters');
     for (let i = 1; i <= PRED_SEASONS; i++) {
       const div = document.createElement('div');
@@ -759,7 +957,6 @@
       seasonsContainer.appendChild(div);
     }
 
-    // Wire up auto-run
     ['pred-ovr-min','pred-ovr-max','pred-age-min','pred-age-max'].forEach(id => {
       document.getElementById(id).addEventListener('input', runPredictionAuto);
     });
@@ -768,7 +965,6 @@
       document.getElementById(`pred-s${i}-max`).addEventListener('input', runPredictionAuto);
     }
 
-    // Show pool size
     const pool = allData.filter(p => (p.seasons ?? []).length >= MIN_CAREER_SEASONS);
     document.getElementById('pred-pool-info').textContent =
       `${pool.length} players with ${MIN_CAREER_SEASONS}+ seasons in dataset`;
@@ -825,14 +1021,12 @@
 
     let matched = applyPredFilters(pool, { ...params, slack: 0 });
     let widened = false;
-
     if (matched.length < 10 && pool.length > 0) {
       const wider = applyPredFilters(pool, { ...params, slack: 5 });
       if (wider.length > matched.length) { matched = wider; widened = true; }
     }
 
     document.getElementById('pred-results').style.display = 'block';
-
     const countEl = document.getElementById('pred-match-count');
     if (!matched.length) {
       countEl.innerHTML = '<span style="color:#f85149">No matching players found — try widening your filters</span>';
@@ -842,21 +1036,19 @@
       return;
     }
 
-    countEl.innerHTML =
-      `<strong style="color:#e6edf3">${matched.length}</strong> <span style="color:#8b949e">matching players</span>` +
-      (widened ? ' <span style="color:#d29922; font-size:12px">(criteria widened ±5 to find more matches)</span>' : '');
+    countEl.innerHTML = `<strong style="color:#e6edf3">${matched.length}</strong> <span style="color:#8b949e">matching players</span>` +
+      (widened ? ' <span style="color:#d29922;font-size:12px">(criteria widened ±5 to find more matches)</span>' : '');
 
-    // Stats
     const growths = matched.map(p => p.careerGrowth ?? 0).sort((a, b) => a - b);
     const finalOvrs = matched.map(p => p.currentOvr ?? 0).sort((a, b) => a - b);
     const fmt = v => (v >= 0 ? '+' : '') + v;
     document.getElementById('pred-stats').innerHTML = `
-      <div class="stat-pill"><div class="stat-pill-label">P25 Career</div><div class="stat-pill-val">${fmt(pct(growths, 25))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Median Career</div><div class="stat-pill-val">${fmt(pct(growths, 50))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">P75 Career</div><div class="stat-pill-val">${fmt(pct(growths, 75))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">P90 Career</div><div class="stat-pill-val">${fmt(pct(growths, 90))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Median Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs, 50)}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">P75 Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs, 75)}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">P25 Career</div><div class="stat-pill-val">${fmt(pct(growths,25))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Median Career</div><div class="stat-pill-val">${fmt(pct(growths,50))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">P75 Career</div><div class="stat-pill-val">${fmt(pct(growths,75))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">P90 Career</div><div class="stat-pill-val">${fmt(pct(growths,90))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Median Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs,50)}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">P75 Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs,75)}</div></div>
     `;
 
     drawGrowthChart(matched);
@@ -864,121 +1056,104 @@
   }
 
   function drawGrowthChart(players) {
-    const validPlayers = players.filter(p => (p.seasonOvrs ?? []).length > 1);
-    if (!validPlayers.length) {
+    const valid = players.filter(p => (p.seasonOvrs ?? []).length > 1);
+    if (!valid.length) {
       document.getElementById('pred-chart-container').innerHTML =
         '<p style="color:#8b949e;font-size:12px">OVR trajectory unavailable — run a new scan to collect this data.</p>';
       return;
     }
-
-    const maxSeas = Math.max(...validPlayers.map(p => p.seasonOvrs.length - 1));
-
+    const maxSeas = Math.max(...valid.map(p => p.seasonOvrs.length - 1));
     const points = [];
     for (let i = 0; i <= maxSeas; i++) {
-      const vals = validPlayers.map(p => (p.seasonOvrs ?? [])[i]).filter(v => v != null).sort((a, b) => a - b);
-      if (vals.length) points.push({ i, p25: pct(vals, 25), median: pct(vals, 50), p75: pct(vals, 75) });
+      const vals = valid.map(p => (p.seasonOvrs ?? [])[i]).filter(v => v != null).sort((a, b) => a - b);
+      if (vals.length) points.push({ i, p25: pct(vals,25), median: pct(vals,50), p75: pct(vals,75) });
     }
     if (points.length < 2) { document.getElementById('pred-chart-container').innerHTML = ''; return; }
 
-    const W = 600, H = 160, P = { t: 12, r: 14, b: 28, l: 38 };
-    const cW = W - P.l - P.r, cH = H - P.t - P.b;
-    const minOvr = Math.min(...points.map(d => d.p25)) - 1;
-    const maxOvr = Math.max(...points.map(d => d.p75)) + 1;
-    const x = i => P.l + (i / maxSeas) * cW;
-    const y = v => P.t + cH - ((v - minOvr) / (maxOvr - minOvr || 1)) * cH;
-
-    const bandTop = points.map(d => `${x(d.i).toFixed(1)},${y(d.p75).toFixed(1)}`).join(' ');
-    const bandBot = [...points].reverse().map(d => `${x(d.i).toFixed(1)},${y(d.p25).toFixed(1)}`).join(' ');
-    const median = points.map(d => `${x(d.i).toFixed(1)},${y(d.median).toFixed(1)}`).join(' ');
-
-    const rawStep = (maxOvr - minOvr) / 4;
-    const step = Math.max(1, Math.ceil(rawStep / 5) * 5);
-    const yTicks = [];
-    for (let v = Math.ceil(minOvr / step) * step; v <= maxOvr; v += step) yTicks.push(v);
-
-    const xStep = Math.max(1, Math.ceil(maxSeas / 8));
-    const xTicks = points.filter(d => d.i % xStep === 0);
+    const W=600, H=160, P={t:12,r:14,b:28,l:38};
+    const cW=W-P.l-P.r, cH=H-P.t-P.b;
+    const minOvr = Math.min(...points.map(d=>d.p25))-1;
+    const maxOvr = Math.max(...points.map(d=>d.p75))+1;
+    const x = i => P.l+(i/maxSeas)*cW;
+    const y = v => P.t+cH-((v-minOvr)/(maxOvr-minOvr||1))*cH;
+    const bandTop = points.map(d=>`${x(d.i).toFixed(1)},${y(d.p75).toFixed(1)}`).join(' ');
+    const bandBot = [...points].reverse().map(d=>`${x(d.i).toFixed(1)},${y(d.p25).toFixed(1)}`).join(' ');
+    const median = points.map(d=>`${x(d.i).toFixed(1)},${y(d.median).toFixed(1)}`).join(' ');
+    const rawStep=(maxOvr-minOvr)/4;
+    const step=Math.max(1,Math.ceil(rawStep/5)*5);
+    const yTicks=[]; for(let v=Math.ceil(minOvr/step)*step;v<=maxOvr;v+=step) yTicks.push(v);
+    const xStep=Math.max(1,Math.ceil(maxSeas/8));
+    const xTicks=points.filter(d=>d.i%xStep===0);
 
     document.getElementById('pred-chart-container').innerHTML = `
-      <div style="color:#8b949e; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px">
-        OVR Trajectory — median (line) + P25–P75 band · ${validPlayers.length} players
+      <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">
+        OVR Trajectory — median + P25–P75 band · ${valid.length} players
       </div>
-      <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block; overflow:visible">
-        <defs>
-          <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.18"/>
-            <stop offset="100%" stop-color="#58a6ff" stop-opacity="0.04"/>
-          </linearGradient>
-        </defs>
-        ${yTicks.map(v => `
-          <line x1="${P.l}" y1="${y(v).toFixed(1)}" x2="${W - P.r}" y2="${y(v).toFixed(1)}" stroke="#21262d" stroke-width="1"/>
-          <text x="${P.l - 4}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" fill="#8b949e" font-size="10">${v}</text>
-        `).join('')}
+      <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
+        <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#58a6ff" stop-opacity="0.04"/>
+        </linearGradient></defs>
+        ${yTicks.map(v=>`<line x1="${P.l}" y1="${y(v).toFixed(1)}" x2="${W-P.r}" y2="${y(v).toFixed(1)}" stroke="#21262d" stroke-width="1"/>
+          <text x="${P.l-4}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" fill="#8b949e" font-size="10">${v}</text>`).join('')}
         <polygon points="${bandTop} ${bandBot}" fill="url(#bg)"/>
         <polyline points="${median}" fill="none" stroke="#58a6ff" stroke-width="2" stroke-linejoin="round"/>
-        ${xTicks.map(d => `<text x="${x(d.i).toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="#8b949e" font-size="10">S${d.i}</text>`).join('')}
-        <line x1="${P.l}" y1="${P.t}" x2="${P.l}" y2="${H - P.b}" stroke="#30363d" stroke-width="1"/>
-        <line x1="${P.l}" y1="${H - P.b}" x2="${W - P.r}" y2="${H - P.b}" stroke="#30363d" stroke-width="1"/>
-      </svg>
-    `;
+        ${xTicks.map(d=>`<text x="${x(d.i).toFixed(1)}" y="${H-6}" text-anchor="middle" fill="#8b949e" font-size="10">S${d.i}</text>`).join('')}
+        <line x1="${P.l}" y1="${P.t}" x2="${P.l}" y2="${H-P.b}" stroke="#30363d" stroke-width="1"/>
+        <line x1="${P.l}" y1="${H-P.b}" x2="${W-P.r}" y2="${H-P.b}" stroke="#30363d" stroke-width="1"/>
+      </svg>`;
   }
 
   function drawMatchesTable(players, seasonFilters) {
     const scored = players.map(p => {
       let dist = 0;
-      for (const f of seasonFilters) {
-        dist += Math.abs(((p.seasons ?? [])[f.idx] ?? 0) - f.midpoint);
-      }
+      for (const f of seasonFilters) dist += Math.abs(((p.seasons??[])[f.idx]??0) - f.midpoint);
       return { p, dist };
-    }).sort((a, b) => a.dist - b.dist || (b.p.careerGrowth ?? 0) - (a.p.careerGrowth ?? 0));
+    }).sort((a,b) => a.dist-b.dist || (b.p.careerGrowth??0)-(a.p.careerGrowth??0));
 
-    const top = scored.slice(0, 10).map(({ p }) => p);
-    const showSeas = Math.min(PRED_SEASONS, Math.max(...top.map(p => (p.seasons ?? []).length)));
-
-    const headers = ['Player', 'Pos', 'Mint', 'Start OVR',
-      ...Array.from({ length: showSeas }, (_, i) => `S${i + 1}`), 'Career'];
-
+    const top = scored.slice(0,10).map(({p})=>p);
+    const showSeas = Math.min(PRED_SEASONS, Math.max(0,...top.map(p=>(p.seasons??[]).length)));
+    const headers = ['Player','Pos','Mint','Start OVR',...Array.from({length:showSeas},(_,i)=>`S${i+1}`),'Career'];
     const rows = top.map(p => {
       const seas = p.seasons ?? [];
-      const seasonCells = Array.from({ length: showSeas }, (_, i) => {
-        const g = seas[i];
-        if (g == null) return '<td class="td-muted">—</td>';
-        if (g > 0) return `<td class="td-gain">+${g}</td>`;
-        if (g < 0) return `<td class="td-loss">${g}</td>`;
+      const sCells = Array.from({length:showSeas},(_,i)=>{
+        const g=seas[i];
+        if(g==null) return '<td class="td-muted">—</td>';
+        if(g>0) return `<td class="td-gain">+${g}</td>`;
+        if(g<0) return `<td class="td-loss">${g}</td>`;
         return '<td class="td-muted">0</td>';
       }).join('');
-      const career = p.careerGrowth ?? 0;
+      const career = p.careerGrowth??0;
       return `<tr>
-        <td>${esc(p.name)}</td>
-        <td class="td-pos">${esc(p.position)}</td>
-        <td class="td-muted">${esc(p.mintAge) || '—'}</td>
-        <td class="td-muted">${esc(p.startOvr) || '—'}</td>
-        ${seasonCells}
-        <td class="td-total">${career > 0 ? '+' : ''}${career}</td>
+        <td>${esc(p.name)}</td><td class="td-pos">${esc(p.position)}</td>
+        <td class="td-muted">${esc(p.mintAge)||'—'}</td><td class="td-muted">${esc(p.startOvr)||'—'}</td>
+        ${sCells}<td class="td-total">${career>0?'+':''}${career}</td>
       </tr>`;
     }).join('');
 
     document.getElementById('pred-matches-table').innerHTML = `
-      <table style="width:100%; border-collapse:collapse; font-size:13px">
-        <thead><tr>${headers.map(h =>
-          `<th style="padding:7px 10px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#8b949e; background:#0d1117; border-bottom:2px solid #30363d; white-space:nowrap">${h}</th>`
-        ).join('')}</tr></thead>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr>${headers.map(h=>`<th style="padding:7px 10px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:#8b949e;background:#0d1117;border-bottom:2px solid #30363d;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
         <tbody>${rows}</tbody>
-      </table>
-    `;
+      </table>`;
   }
 
   function clearPrediction() {
     ['pred-ovr-min','pred-ovr-max','pred-age-min','pred-age-max'].forEach(id => {
       document.getElementById(id).value = '';
     });
-    for (let i = 1; i <= PRED_SEASONS; i++) {
-      document.getElementById(`pred-s${i}-min`).value = '';
-      document.getElementById(`pred-s${i}-max`).value = '';
+    for (let i=1;i<=PRED_SEASONS;i++) {
+      document.getElementById(`pred-s${i}-min`).value='';
+      document.getElementById(`pred-s${i}-max`).value='';
     }
-    document.querySelectorAll('#pred-pos-btns .pos-btn.active').forEach(b => b.classList.remove('active'));
-    document.getElementById('pred-results').style.display = 'none';
+    document.querySelectorAll('#pred-pos-btns .pos-btn.active').forEach(b=>b.classList.remove('active'));
+    document.getElementById('pred-results').style.display='none';
   }
+
+  // ==========================================
+  // START
+  // ==========================================
+  init();
 </script>
 </body>
 </html>
