@@ -1076,7 +1076,7 @@
     // start OVRs and different career lengths are comparable. A player with only
     // 5 seasons contributes to S1–S5 without distorting S8+ with survivorship bias.
     const maxSeas = Math.max(...valid.map(p => p.seasons.length));
-    const MIN_N = Math.max(3, Math.ceil(valid.length * 0.2));
+    const MIN_N = Math.max(3, Math.ceil(valid.length * 0.75));
     const points = [];
     for (let i = 0; i <= maxSeas; i++) {
       const vals = valid
