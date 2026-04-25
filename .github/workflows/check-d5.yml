@@ -1,4 +1,4 @@
-name: Check Progressions
+name: Check Division 5
 on:
   workflow_dispatch:
 
@@ -8,6 +8,8 @@ jobs:
     timeout-minutes: 360
     permissions:
       contents: write
+    env:
+      DIVISION: 5
 
     steps:
       - uses: actions/checkout@v4

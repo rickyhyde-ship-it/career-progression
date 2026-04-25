@@ -13,12 +13,15 @@ const CONCURRENCY = 3;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 50;
 const GH_PAGES_DIR = './gh-pages';
-const CHECKPOINT_FILE = `${GH_PAGES_DIR}/.progression-checkpoint.json`;
+const DIVISION = parseInt(process.env.DIVISION ?? '1');
+const DATA_FILE = `${GH_PAGES_DIR}/data-d${DIVISION}.json`;
+const PROGRESS_FILE = `${GH_PAGES_DIR}/progress-d${DIVISION}.json`;
+const CHECKPOINT_FILE = `${GH_PAGES_DIR}/.checkpoint-d${DIVISION}.json`;
 const PROGRESS_EVERY = 200;
 // ==========================================
 
 const LEADERBOARD_URLS = [
-  { division: 1, url: 'https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=1&sort=nbMflPoints&sortOrder=DESC&limit=20000' },
+  { division: DIVISION, url: `https://z519wdyajg.execute-api.us-east-1.amazonaws.com/prod/leaderboards/clubs/global?division=${DIVISION}&sort=nbMflPoints&sortOrder=DESC&limit=20000` },
 ];
 
 const HEADER_SETS = [
@@ -202,18 +205,18 @@ async function pushProgress(scanned, total) {
   const remaining = total - scanned;
   const etaSeconds = rate > 0 ? Math.round(remaining / rate) : 0;
 
-  const progress = { scanned, total, etaSeconds, running: true };
-  await writeFile(`${GH_PAGES_DIR}/progress.json`, JSON.stringify(progress), 'utf8');
+  const progress = { division: DIVISION, scanned, total, etaSeconds, running: true };
+  await writeFile(PROGRESS_FILE, JSON.stringify(progress), 'utf8');
   gitPushGhPages(`chore: progress ${scanned}/${total}`);
   console.log(`📊 Progress pushed: ${scanned}/${total} players (ETA ${etaSeconds}s)`);
 }
 
 async function pushData(players) {
-  const data = { updatedAt: new Date().toISOString(), players };
-  await writeFile(`${GH_PAGES_DIR}/data.json`, JSON.stringify(data), 'utf8');
-  try { execSync(`rm -f ${GH_PAGES_DIR}/progress.json`); } catch { /* ignore */ }
-  gitPushGhPages('chore: update player data');
-  console.log(`✅ data.json pushed — ${players.length} players`);
+  const data = { division: DIVISION, updatedAt: new Date().toISOString(), clubs: clubMap?.size ?? 0, players };
+  await writeFile(DATA_FILE, JSON.stringify(data), 'utf8');
+  try { execSync(`rm -f ${PROGRESS_FILE}`); } catch { /* ignore */ }
+  gitPushGhPages(`chore: update D${DIVISION} player data`);
+  console.log(`✅ data-d${DIVISION}.json pushed — ${players.length} players`);
 }
 
 // ==========================================
@@ -442,6 +445,7 @@ async function processClub(clubId, division, totalClubs) {
 // ==========================================
 
 let clubMap;
+console.log(`🏁 Starting Division ${DIVISION} scan`);
 try {
   clubMap = await fetchClubIds();
 } catch (err) {
@@ -487,7 +491,8 @@ console.log(`📊 Clubs: ${clubsChecked} checked, ${clubsFailed} failed`);
 console.log(`👥 Unique players: ${allPlayers.length}`);
 console.log(`⚠️  Player detail failures: ${playerDetailsFailed}`);
 
-allPlayers.sort((a, b) => (b.careerGrowth ?? 0) - (a.careerGrowth ?? 0));
+const uniquePlayers = [...new Map(allPlayers.map(p => [p.playerId, p])).values()];
+uniquePlayers.sort((a, b) => (b.careerGrowth ?? 0) - (a.careerGrowth ?? 0));
 
-await pushData(allPlayers);
+await pushData(uniquePlayers);
 await clearCheckpoint();
