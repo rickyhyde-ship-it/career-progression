@@ -624,14 +624,21 @@
 
       let progressCell;
       if (isRunning && prog) {
-        const pct = prog.total > 0 ? Math.min(100, Math.round(prog.scanned / prog.total * 100)) : 0;
+        const clubsDone = prog.clubsChecked ?? 0;
+        const clubsTotal = prog.clubsTotal ?? 0;
+        const pct = clubsTotal > 0 ? Math.min(100, Math.round(clubsDone / clubsTotal * 100)) : 0;
         const eta = prog.etaSeconds > 0 ? formatEta(prog.etaSeconds) : '…';
+        const isRateLimited = prog.statusMsg?.toLowerCase().includes('rate');
+        const statusColor = isRateLimited ? '#f0883e' : '#8b949e';
         progressCell = `
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="flex:1;background:#21262d;border-radius:3px;height:6px;min-width:100px">
-              <div style="background:#3fb950;height:6px;border-radius:3px;width:${pct}%;transition:width 0.5s"></div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+              <div style="flex:1;background:#21262d;border-radius:3px;height:6px;min-width:100px">
+                <div style="background:${isRateLimited ? '#f0883e' : '#3fb950'};height:6px;border-radius:3px;width:${pct}%;transition:width 0.5s"></div>
+              </div>
+              <span style="font-size:11px;color:#8b949e;white-space:nowrap">${clubsDone}/${clubsTotal} clubs · ETA ${eta}</span>
             </div>
-            <span style="font-size:11px;color:#8b949e;white-space:nowrap">${prog.scanned}/${prog.total} · ETA ${eta}</span>
+            ${prog.statusMsg ? `<div style="font-size:11px;color:${statusColor}">${esc(prog.statusMsg)}</div>` : ''}
           </div>`;
       } else if (meta.clubs) {
         progressCell = `<span style="color:#8b949e;font-size:12px">${meta.clubs} clubs scanned</span>`;
@@ -639,7 +646,9 @@
         progressCell = '<span style="color:#8b949e;font-size:12px">—</span>';
       }
 
-      const players = meta.playerCount != null ? meta.playerCount.toLocaleString() : '—';
+      const players = isRunning && prog?.players != null
+        ? prog.players.toLocaleString()
+        : meta.playerCount != null ? meta.playerCount.toLocaleString() : '—';
       const updated = meta.updatedAt
         ? new Date(meta.updatedAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'2-digit' })
         : '—';
