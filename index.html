@@ -348,38 +348,7 @@
     <p>Use the Run buttons above to start a division scan.</p>
   </div>
 
-  <div id="filter-section">
-    <select id="filter-div">
-      <option value="">All Divisions</option>
-      <option value="1">D1</option><option value="2">D2</option><option value="3">D3</option>
-      <option value="4">D4</option><option value="5">D5</option><option value="6">D6</option>
-      <option value="7">D7</option><option value="8">D8</option><option value="9">D9</option>
-      <option value="10">D10</option>
-    </select>
-    <select id="filter-pos">
-      <option value="">All Positions</option>
-      <option value="GK">GK</option><option value="DEF">DEF</option>
-      <option value="MID">MID</option><option value="ATT">ATT</option>
-    </select>
-    <input type="number" id="filter-ovr-min" placeholder="Min +OVR" min="0" style="width:100px">
-    <input type="number" id="filter-ovr-min2" placeholder="Min OVR" min="0" style="width:90px">
-    <input type="number" id="filter-ovr-max" placeholder="Max OVR" min="0" style="width:90px">
-    <input type="text" id="search-input" placeholder="🔍  Search player...">
-    <div id="player-count" style="color:#8b949e;font-size:13px;white-space:nowrap;padding:0 4px;"></div>
-    <button id="export-btn" onclick="exportCsv()" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap">⬇ Export CSV</button>
-  </div>
-
-  <div id="table-section">
-    <div class="table-wrapper">
-      <table id="data-table">
-        <thead id="table-head"></thead>
-        <tbody id="table-body"></tbody>
-      </table>
-    </div>
-    <div class="footer" id="footer"></div>
-  </div>
-
-  <div id="prediction-section" style="display:none">
+  <div id="prediction-section" style="display:none; margin-bottom:18px">
     <div class="pred-panel">
       <div class="pred-header" onclick="togglePrediction()">
         <div>
@@ -429,6 +398,37 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div id="filter-section">
+    <select id="filter-div">
+      <option value="">All Divisions</option>
+      <option value="1">D1</option><option value="2">D2</option><option value="3">D3</option>
+      <option value="4">D4</option><option value="5">D5</option><option value="6">D6</option>
+      <option value="7">D7</option><option value="8">D8</option><option value="9">D9</option>
+      <option value="10">D10</option>
+    </select>
+    <select id="filter-pos">
+      <option value="">All Positions</option>
+      <option value="GK">GK</option><option value="DEF">DEF</option>
+      <option value="MID">MID</option><option value="ATT">ATT</option>
+    </select>
+    <input type="number" id="filter-ovr-min" placeholder="Min +OVR" min="0" style="width:100px">
+    <input type="number" id="filter-ovr-min2" placeholder="Min OVR" min="0" style="width:90px">
+    <input type="number" id="filter-ovr-max" placeholder="Max OVR" min="0" style="width:90px">
+    <input type="text" id="search-input" placeholder="🔍  Search player...">
+    <div id="player-count" style="color:#8b949e;font-size:13px;white-space:nowrap;padding:0 4px;"></div>
+    <button id="export-btn" onclick="exportCsv()" style="background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap">⬇ Export CSV</button>
+  </div>
+
+  <div id="table-section">
+    <div class="table-wrapper">
+      <table id="data-table">
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div class="footer" id="footer"></div>
   </div>
 
 </div>
