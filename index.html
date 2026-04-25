@@ -587,20 +587,40 @@
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       DIVISIONS.forEach(d => {
+        const meta = divMeta[d] ?? {};
+        if (meta.status !== 'running') return; // only tick for live runs
         const el = document.getElementById(`timer-d${d}`);
         if (el) el.textContent = getTimerStr(d);
       });
     }, 1000);
   }
 
-  function getTimerStr(d) {
-    const t = localStorage.getItem(`trigger-d${d}`);
-    if (!t) return '—';
-    const secs = Math.floor((Date.now() - parseInt(t)) / 1000);
+  function secsToHms(secs) {
+    if (secs < 0) return '—';
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
     const s = secs % 60;
     return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function getTimerStr(d) {
+    const t = localStorage.getItem(`trigger-d${d}`);
+    if (!t) return '—';
+    const triggered = parseInt(t);
+    const meta = divMeta[d] ?? {};
+
+    if (meta.status === 'running') {
+      // Live ticking elapsed time
+      return secsToHms(Math.floor((Date.now() - triggered) / 1000));
+    }
+
+    // Completed: freeze at how long the run actually took
+    if (meta.updatedAt) {
+      const secs = Math.floor((new Date(meta.updatedAt).getTime() - triggered) / 1000);
+      if (secs > 0 && secs < 6 * 3600) return secsToHms(secs);
+    }
+
+    return '—';
   }
 
   // ==========================================
