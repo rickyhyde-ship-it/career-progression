@@ -17,7 +17,7 @@ const DIVISION = parseInt(process.env.DIVISION ?? '1');
 const DATA_FILE = `${GH_PAGES_DIR}/data-d${DIVISION}.json`;
 const PROGRESS_FILE = `${GH_PAGES_DIR}/progress-d${DIVISION}.json`;
 const CHECKPOINT_FILE = `${GH_PAGES_DIR}/.checkpoint-d${DIVISION}.json`;
-const PROGRESS_EVERY = 200;
+const PROGRESS_EVERY_CLUBS = 5;
 // ==========================================
 
 const LEADERBOARD_URLS = [
@@ -71,7 +71,9 @@ const seenPlayerIds = new Set();
 let clubsChecked = 0;
 let clubsFailed = 0;
 let playerDetailsFailed = 0;
-let lastProgressPush = 0;
+let lastClubProgressPush = 0;
+let currentStatusMsg = 'Scanning clubs...';
+let cooldownPushPending = false;
 
 let rateLimitedUntil = 0;
 let consecutive403s = 0;
@@ -101,9 +103,13 @@ async function waitIfRateLimited() {
   if (rateLimitedUntil > now) {
     const wait = rateLimitedUntil - now;
     console.log(`⏸️  Waiting ${(wait / 1000).toFixed(0)}s for shared cooldown...`);
+    if (cooldownPushPending) {
+      cooldownPushPending = false;
+      await pushProgress(`Rate limited — pausing ${Math.ceil(wait / 1000)}s`).catch(() => {});
+    }
     await sleep(wait);
-    // Jitter so workers don't all resume and burst simultaneously
     await sleep(Math.random() * 3000);
+    currentStatusMsg = 'Scanning clubs...';
     console.log(`▶️  Resuming...`);
   }
 }
@@ -118,6 +124,8 @@ function triggerRateLimit() {
   const newUntil = Date.now() + currentCooldownMs;
   if (newUntil > rateLimitedUntil) {
     rateLimitedUntil = newUntil;
+    currentStatusMsg = `Rate limited — pausing ${currentCooldownMs / 1000}s`;
+    cooldownPushPending = true;
     console.log(`🚫 Rate limit triggered — all workers pausing for ${currentCooldownMs / 1000}s`);
   }
 }
@@ -199,16 +207,17 @@ function gitPushGhPages(message) {
   }
 }
 
-async function pushProgress(scanned, total) {
+async function pushProgress(statusMsg = currentStatusMsg) {
+  const total = clubMap?.size ?? 0;
   const elapsed = (Date.now() - startTime) / 1000;
-  const rate = scanned / elapsed;
-  const remaining = total - scanned;
+  const rate = elapsed > 0 ? clubsChecked / elapsed : 0;
+  const remaining = total - clubsChecked;
   const etaSeconds = rate > 0 ? Math.round(remaining / rate) : 0;
 
-  const progress = { division: DIVISION, scanned, total, etaSeconds, running: true };
+  const progress = { division: DIVISION, clubsChecked, clubsTotal: total, players: allPlayers.length, etaSeconds, statusMsg, running: true };
   await writeFile(PROGRESS_FILE, JSON.stringify(progress), 'utf8');
-  gitPushGhPages(`chore: progress ${scanned}/${total}`);
-  console.log(`📊 Progress pushed: ${scanned}/${total} players (ETA ${etaSeconds}s)`);
+  gitPushGhPages(`chore: progress D${DIVISION} ${clubsChecked}/${total}`);
+  console.log(`📊 Progress: ${clubsChecked}/${total} clubs, ${allPlayers.length} players — ${statusMsg}`);
 }
 
 async function pushData(players) {
@@ -428,16 +437,15 @@ async function processClub(clubId, division, totalClubs) {
       revealedPotential,
       growthRate,
     });
-
-    const newTotal = allPlayers.length;
-    if (newTotal - lastProgressPush >= PROGRESS_EVERY) {
-      lastProgressPush = newTotal;
-      await pushProgress(newTotal, seenPlayerIds.size + (totalClubs - clubsChecked) * 5);
-    }
   }
 
   clubsChecked++;
   console.log(`✅ Club ${clubId} (D${division}): ${Object.keys(data).length} players — ${clubsChecked}/${totalClubs} clubs, ${allPlayers.length} total players`);
+
+  if (clubsChecked - lastClubProgressPush >= PROGRESS_EVERY_CLUBS) {
+    lastClubProgressPush = clubsChecked;
+    await pushProgress();
+  }
 }
 
 // ==========================================
@@ -466,7 +474,7 @@ if (checkpoint?.players?.length) {
 const pendingClubs = [...clubMap.keys()].filter(id => !completedSet.has(id));
 console.log(`🔍 ${pendingClubs.length} clubs remaining\n`);
 
-await pushProgress(allPlayers.length, clubMap.size * 5);
+await pushProgress(checkpoint ? 'Resuming from checkpoint...' : 'Starting scan...');
 
 const semaphore = createSemaphore(CONCURRENCY);
 
