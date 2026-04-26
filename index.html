@@ -360,24 +360,29 @@
       <div id="pred-body" class="pred-body">
         <div class="pred-input-grid">
           <div>
-            <div class="pred-field-label">Start OVR range</div>
-            <div class="pred-range">
-              <input type="number" class="pred-num" id="pred-ovr-min" placeholder="Min" min="0" max="99">
-              <span>–</span>
-              <input type="number" class="pred-num" id="pred-ovr-max" placeholder="Max" min="0" max="99">
-            </div>
+            <div class="pred-field-label">Start OVR</div>
+            <input type="number" class="pred-num" id="pred-ovr" placeholder="e.g. 52" min="0" max="99" style="width:80px">
           </div>
           <div>
-            <div class="pred-field-label">Mint Age range</div>
-            <div class="pred-range">
-              <input type="number" class="pred-num" id="pred-age-min" placeholder="Min" min="15" max="40">
-              <span>–</span>
-              <input type="number" class="pred-num" id="pred-age-max" placeholder="Max" min="15" max="40">
-            </div>
+            <div class="pred-field-label">Mint Age</div>
+            <input type="number" class="pred-num" id="pred-age" placeholder="e.g. 24" min="15" max="40" style="width:80px">
           </div>
           <div>
             <div class="pred-field-label">Position/s</div>
             <div id="pred-pos-btns" style="display:flex; gap:6px; flex-wrap:wrap"></div>
+          </div>
+        </div>
+        <div id="pred-widen-controls" style="display:none; margin-top:14px; padding:12px 14px; background:#0d1117; border-radius:6px; border:1px solid #21262d">
+          <div style="color:#8b949e; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px">Widen search</div>
+          <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center">
+            <div style="display:flex; align-items:center; gap:8px">
+              <span style="color:#8b949e; font-size:12px; min-width:50px">OVR ±</span>
+              <div id="pred-ovr-tol" style="display:flex; gap:4px"></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px">
+              <span style="color:#8b949e; font-size:12px; min-width:50px">Age ±</span>
+              <div id="pred-age-tol" style="display:flex; gap:4px"></div>
+            </div>
           </div>
         </div>
         <div style="margin-top:14px">
@@ -968,6 +973,8 @@
   let predOpen = true;
   let predInitDone = false;
   let predAutoTimer = null;
+  let predOvrTol = 0;
+  let predAgeTol = 0;
 
   const POS_MAP = {
     GK:  p => p.startsWith('GK'),
@@ -1022,8 +1029,11 @@
       seasonsContainer.appendChild(div);
     }
 
-    ['pred-ovr-min','pred-ovr-max','pred-age-min','pred-age-max'].forEach(id => {
-      document.getElementById(id).addEventListener('input', runPredictionAuto);
+    ['pred-ovr','pred-age'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        predOvrTol = 0; predAgeTol = 0;
+        runPredictionAuto();
+      });
     });
     for (let i = 1; i <= PRED_SEASONS; i++) {
       document.getElementById(`pred-s${i}-min`).addEventListener('input', runPredictionAuto);
@@ -1057,52 +1067,64 @@
     return filters;
   }
 
-  function applyPredFilters(players, { ovrMin, ovrMax, ageMin, ageMax, positions, seasonFilters, slack = 0 }) {
+  function applyPredFilters(players, { ovr, age, ovrTol, ageTol, positions, seasonFilters }) {
     return players.filter(p => {
-      if (ovrMin > 0 && (p.startOvr ?? 0) < ovrMin - slack) return false;
-      if (ovrMax < 999 && (p.startOvr ?? 0) > ovrMax + slack) return false;
-      if (ageMin > 0 && (p.mintAge ?? 0) < ageMin - Math.min(slack, 2)) return false;
-      if (ageMax < 999 && (p.mintAge ?? 0) > ageMax + Math.min(slack, 2)) return false;
+      if (ovr != null && Math.abs((p.startOvr ?? 0) - ovr) > ovrTol) return false;
+      if (age != null && Math.abs((p.mintAge ?? 0) - age) > ageTol) return false;
       if (!posMatchesCategories(p.position, positions)) return false;
       for (const f of seasonFilters) {
         const gain = (p.seasons ?? [])[f.idx];
         if (gain == null) return false;
-        if (gain < f.min - slack || gain > f.max + slack) return false;
+        if (gain < f.min || gain > f.max) return false;
       }
       return true;
     });
   }
 
+  function renderWidenButtons() {
+    const tolBtnStyle = (active) =>
+      `background:${active ? '#1f3147' : '#21262d'};border:1px solid ${active ? '#58a6ff' : '#30363d'};` +
+      `color:${active ? '#58a6ff' : '#8b949e'};border-radius:5px;padding:3px 9px;font-size:12px;font-weight:600;cursor:pointer`;
+    document.getElementById('pred-ovr-tol').innerHTML =
+      [0,1,2,3,4,5].map(v => `<button onclick="setPredTol('ovr',${v})" style="${tolBtnStyle(predOvrTol===v)}">±${v}</button>`).join('');
+    document.getElementById('pred-age-tol').innerHTML =
+      [0,1,2,3,4,5].map(v => `<button onclick="setPredTol('age',${v})" style="${tolBtnStyle(predAgeTol===v)}">±${v}</button>`).join('');
+  }
+
+  function setPredTol(field, val) {
+    if (field === 'ovr') predOvrTol = val;
+    else predAgeTol = val;
+    runPrediction();
+  }
+
   function runPrediction() {
-    const ovrMin = parseInt(document.getElementById('pred-ovr-min').value) || 0;
-    const ovrMax = parseInt(document.getElementById('pred-ovr-max').value) || 999;
-    const ageMin = parseInt(document.getElementById('pred-age-min').value) || 0;
-    const ageMax = parseInt(document.getElementById('pred-age-max').value) || 999;
+    const ovrRaw = document.getElementById('pred-ovr').value;
+    const ageRaw = document.getElementById('pred-age').value;
+    const ovr = ovrRaw !== '' ? parseInt(ovrRaw) : null;
+    const age = ageRaw !== '' ? parseInt(ageRaw) : null;
     const positions = [...document.querySelectorAll('#pred-pos-btns .pos-btn.active')].map(b => b.dataset.pos);
     const seasonFilters = getSeasonFilters();
 
     const pool = allData.filter(p => (p.seasons ?? []).length >= MIN_CAREER_SEASONS);
-    const params = { ovrMin, ovrMax, ageMin, ageMax, positions, seasonFilters };
+    const matched = applyPredFilters(pool, { ovr, age, ovrTol: predOvrTol, ageTol: predAgeTol, positions, seasonFilters });
 
-    let matched = applyPredFilters(pool, { ...params, slack: 0 });
-    let widened = false;
-    if (matched.length < 10 && pool.length > 0) {
-      const wider = applyPredFilters(pool, { ...params, slack: 5 });
-      if (wider.length > matched.length) { matched = wider; widened = true; }
-    }
+    // Show widen controls whenever a search has been run
+    document.getElementById('pred-widen-controls').style.display = 'block';
+    renderWidenButtons();
 
     document.getElementById('pred-results').style.display = 'block';
     const countEl = document.getElementById('pred-match-count');
     if (!matched.length) {
-      countEl.innerHTML = '<span style="color:#f85149">No matching players found — try widening your filters</span>';
+      countEl.innerHTML = '<span style="color:#f85149">No matching players — try widening OVR or Age tolerance above</span>';
       document.getElementById('pred-stats').innerHTML = '';
       document.getElementById('pred-chart-container').innerHTML = '';
       document.getElementById('pred-matches-table').innerHTML = '';
       return;
     }
 
-    countEl.innerHTML = `<strong style="color:#e6edf3">${matched.length}</strong> <span style="color:#8b949e">matching players</span>` +
-      (widened ? ' <span style="color:#d29922;font-size:12px">(criteria widened ±5 to find more matches)</span>' : '');
+    const widenNote = (predOvrTol > 0 || predAgeTol > 0)
+      ? ` <span style="color:#8b949e;font-size:12px">(OVR ±${predOvrTol}, Age ±${predAgeTol})</span>` : '';
+    countEl.innerHTML = `<strong style="color:#e6edf3">${matched.length}</strong> <span style="color:#8b949e">matching players</span>${widenNote}`;
 
     const growths = matched.map(p => p.careerGrowth ?? 0).sort((a, b) => a - b);
     const finalOvrs = matched.map(p => p.currentOvr ?? 0).sort((a, b) => a - b);
@@ -1229,15 +1251,17 @@
   }
 
   function clearPrediction() {
-    ['pred-ovr-min','pred-ovr-max','pred-age-min','pred-age-max'].forEach(id => {
-      document.getElementById(id).value = '';
-    });
+    document.getElementById('pred-ovr').value = '';
+    document.getElementById('pred-age').value = '';
     for (let i=1;i<=PRED_SEASONS;i++) {
       document.getElementById(`pred-s${i}-min`).value='';
       document.getElementById(`pred-s${i}-max`).value='';
     }
     document.querySelectorAll('#pred-pos-btns .pos-btn.active').forEach(b=>b.classList.remove('active'));
-    document.getElementById('pred-results').style.display='none';
+    predOvrTol = 0;
+    predAgeTol = 0;
+    document.getElementById('pred-widen-controls').style.display = 'none';
+    document.getElementById('pred-results').style.display = 'none';
   }
 
   // ==========================================
