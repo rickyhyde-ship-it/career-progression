@@ -470,6 +470,10 @@
   let timerInterval = null;
   let divMeta = {}; // d -> { updatedAt, clubs, playerCount, status, progress }
   let patPendingDiv = null;
+  let filteredSorted = [];
+  let currentPage = 0;
+  const PAGE_SIZE = 100;
+  let filterDebounceTimer = null;
 
   // ==========================================
   // INIT
@@ -558,20 +562,24 @@
       )
     );
 
-    let anyRunning = false;
+    let anyJustFinished = false;
     results.forEach((prog, i) => {
       const d = DIVISIONS[i];
       if (prog?.running) {
-        anyRunning = true;
-        divMeta[d] = { ...divMeta[d], progress: prog, status: 'running' };
+        divMeta[d] = {
+          ...divMeta[d],
+          progress: prog,
+          status: 'running',
+          playerCount: prog.players ?? divMeta[d]?.playerCount,
+        };
       } else if (divMeta[d]?.status === 'running') {
         divMeta[d] = { ...divMeta[d], progress: null };
-        // Don't reset status here — loadAllData will set it to complete
+        anyJustFinished = true;
       }
     });
 
     renderDivisionPanel();
-    if (anyRunning) await loadAllData();
+    if (anyJustFinished) await loadAllData();
   }
 
   function startPolling() {
@@ -814,6 +822,7 @@
         const key = th.dataset.col;
         sortDir = sortCol === key ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc';
         sortCol = key;
+        currentPage = 0;
         updateSortClasses();
         renderRows();
       });
@@ -856,15 +865,24 @@
   }
 
   function renderRows() {
-    const filtered = getFilteredData();
-    filtered.sort((a, b) => {
+    filteredSorted = getFilteredData();
+    filteredSorted.sort((a, b) => {
       const av = getSortValue(a, sortCol), bv = getSortValue(b, sortCol);
       if (av < bv) return sortDir === 'asc' ? -1 : 1;
       if (av > bv) return sortDir === 'asc' ? 1 : -1;
       return 0;
     });
+    renderPage();
+  }
 
-    document.getElementById('table-body').innerHTML = filtered.map(p => {
+  function renderPage() {
+    const total = filteredSorted.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    currentPage = Math.min(currentPage, totalPages - 1);
+    const start = currentPage * PAGE_SIZE;
+    const page = filteredSorted.slice(start, start + PAGE_SIZE);
+
+    document.getElementById('table-body').innerHTML = page.map(p => {
       const career = p.careerGrowth ?? 0;
       const seasons = p.seasons ?? [];
       let seasonCells = '';
@@ -890,13 +908,31 @@
     }).join('');
 
     const countEl = document.getElementById('player-count');
-    if (countEl) countEl.textContent = `${filtered.length.toLocaleString()} / ${allData.length.toLocaleString()} players`;
-    document.getElementById('footer').textContent =
-      `Showing ${filtered.length.toLocaleString()} of ${allData.length.toLocaleString()} players`;
+    if (countEl) countEl.textContent = `${total.toLocaleString()} / ${allData.length.toLocaleString()} players`;
+
+    const from = total === 0 ? 0 : start + 1;
+    const to = Math.min(start + PAGE_SIZE, total);
+    const btnStyle = 'background:#21262d;border:1px solid #30363d;color:#e6edf3;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;margin:0 4px';
+    const disabledStyle = 'background:#161b22;border:1px solid #21262d;color:#484f58;border-radius:5px;padding:3px 10px;font-size:12px;cursor:default;margin:0 4px';
+    document.getElementById('footer').innerHTML = total > PAGE_SIZE
+      ? `Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${total.toLocaleString()} players &nbsp;
+         <button onclick="changePage(-1)" style="${currentPage === 0 ? disabledStyle : btnStyle}" ${currentPage === 0 ? 'disabled' : ''}>← Prev</button>
+         <span style="color:#8b949e;font-size:12px">Page ${currentPage + 1} of ${totalPages}</span>
+         <button onclick="changePage(1)" style="${currentPage >= totalPages - 1 ? disabledStyle : btnStyle}" ${currentPage >= totalPages - 1 ? 'disabled' : ''}>Next →</button>`
+      : `Showing ${total.toLocaleString()} of ${allData.length.toLocaleString()} players`;
+  }
+
+  function changePage(dir) {
+    currentPage += dir;
+    renderPage();
+    document.getElementById('table-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   ['filter-div','filter-pos','filter-ovr-min','filter-ovr-min2','filter-ovr-max','search-input'].forEach(id => {
-    document.getElementById(id).addEventListener('input', renderRows);
+    document.getElementById(id).addEventListener('input', () => {
+      clearTimeout(filterDebounceTimer);
+      filterDebounceTimer = setTimeout(() => { currentPage = 0; renderRows(); }, 150);
+    });
   });
 
   function exportCsv() {
