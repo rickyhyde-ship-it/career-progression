@@ -452,32 +452,21 @@
           </div>
         </div>
         <div style="margin-top:14px; padding-top:12px; border-top:1px solid #21262d">
-          <div class="pred-field-label">Career totals <span style="font-weight:400;text-transform:none;letter-spacing:0">(leave blank to skip)</span></div>
-          <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:10px; align-items:flex-end">
-            <div>
-              <div style="color:#8b949e; font-size:11px; margin-bottom:5px">Total Progression</div>
-              <div style="display:flex; align-items:center; gap:4px">
-                <button class="tol-btn" onclick="stepPredInput('pred-total-min',-1)">−</button>
-                <input type="number" class="pred-num" id="pred-total-min" placeholder="Min" style="width:46px">
-                <button class="tol-btn" onclick="stepPredInput('pred-total-min',1)">+</button>
-                <span style="color:#30363d; padding:0 2px">–</span>
-                <button class="tol-btn" onclick="stepPredInput('pred-total-max',-1)">−</button>
-                <input type="number" class="pred-num" id="pred-total-max" placeholder="Max" style="width:46px">
-                <button class="tol-btn" onclick="stepPredInput('pred-total-max',1)">+</button>
-              </div>
-            </div>
-            <div>
-              <div style="color:#8b949e; font-size:11px; margin-bottom:5px">Seasons Played</div>
-              <div style="display:flex; align-items:center; gap:4px">
-                <button class="tol-btn" onclick="stepPredInput('pred-seasons-min',-1)">−</button>
-                <input type="number" class="pred-num" id="pred-seasons-min" placeholder="Min" style="width:46px" min="1">
-                <button class="tol-btn" onclick="stepPredInput('pred-seasons-min',1)">+</button>
-                <span style="color:#30363d; padding:0 2px">–</span>
-                <button class="tol-btn" onclick="stepPredInput('pred-seasons-max',-1)">−</button>
-                <input type="number" class="pred-num" id="pred-seasons-max" placeholder="Max" style="width:46px" min="1">
-                <button class="tol-btn" onclick="stepPredInput('pred-seasons-max',1)">+</button>
-              </div>
-            </div>
+          <div class="pred-field-label">Quick progression filter <span style="font-weight:400;text-transform:none;letter-spacing:0">(leave blank to skip)</span></div>
+          <div style="display:flex; align-items:center; gap:6px; margin-top:10px; flex-wrap:wrap">
+            <span style="color:#8b949e; font-size:12px">Total</span>
+            <button class="tol-btn" onclick="stepPredInput('pred-quick-min',-1)">−</button>
+            <input type="number" class="pred-num" id="pred-quick-min" placeholder="Min" style="width:46px">
+            <button class="tol-btn" onclick="stepPredInput('pred-quick-min',1)">+</button>
+            <span style="color:#30363d; padding:0 2px">–</span>
+            <button class="tol-btn" onclick="stepPredInput('pred-quick-max',-1)">−</button>
+            <input type="number" class="pred-num" id="pred-quick-max" placeholder="Max" style="width:46px">
+            <button class="tol-btn" onclick="stepPredInput('pred-quick-max',1)">+</button>
+            <span style="color:#8b949e; font-size:12px; margin-left:6px">in first</span>
+            <button class="tol-btn" onclick="stepPredInput('pred-quick-seasons',-1)">−</button>
+            <input type="number" class="pred-num" id="pred-quick-seasons" placeholder="N" style="width:40px" min="1">
+            <button class="tol-btn" onclick="stepPredInput('pred-quick-seasons',1)">+</button>
+            <span style="color:#8b949e; font-size:12px">seasons</span>
           </div>
         </div>
         <div style="margin-top:16px; display:flex; gap:10px; align-items:center">
@@ -1134,7 +1123,7 @@
     gridHtml += '</div>';
     seasonsContainer.innerHTML = gridHtml;
 
-    ['pred-ovr','pred-age','pred-total-min','pred-total-max','pred-seasons-min','pred-seasons-max'].forEach(id => {
+    ['pred-ovr','pred-age','pred-quick-min','pred-quick-max','pred-quick-seasons'].forEach(id => {
       document.getElementById(id)?.addEventListener('input', runPredictionAuto);
     });
     for (let i = 1; i <= PRED_SEASONS; i++) {
@@ -1169,19 +1158,18 @@
     return filters;
   }
 
-  function applyPredFilters(players, { ovr, age, ovrLow, ovrHigh, ageLow, ageHigh, positions, seasonFilters, combined, totalMin, totalMax, seasonsMin, seasonsMax }) {
+  function applyPredFilters(players, { ovr, age, ovrLow, ovrHigh, ageLow, ageHigh, positions, seasonFilters, combined, quickMin, quickMax, quickSeasons }) {
     return players.filter(p => {
       if (ovr != null && ((p.startOvr ?? 0) < ovr - ovrLow || (p.startOvr ?? 0) > ovr + ovrHigh)) return false;
       if (age != null && ((p.mintAge ?? 0) < age - ageLow || (p.mintAge ?? 0) > age + ageHigh)) return false;
       if (!posMatchesCategories(p.position, positions)) return false;
-      if (totalMin != null || totalMax != null) {
-        const total = (p.seasons ?? []).reduce((sum, g) => sum + g, 0);
-        if (totalMin != null && total < totalMin) return false;
-        if (totalMax != null && total > totalMax) return false;
+      if (quickSeasons != null && (quickMin != null || quickMax != null)) {
+        const seas = p.seasons ?? [];
+        if (seas.length < quickSeasons) return false;
+        const total = seas.slice(0, quickSeasons).reduce((sum, g) => sum + g, 0);
+        if (quickMin != null && total < quickMin) return false;
+        if (quickMax != null && total > quickMax) return false;
       }
-      const seasonsCount = (p.seasons ?? []).length;
-      if (seasonsMin != null && seasonsCount < seasonsMin) return false;
-      if (seasonsMax != null && seasonsCount > seasonsMax) return false;
       if (combined && seasonFilters.length > 0) {
         const seas = p.seasons ?? [];
         if (seasonFilters.some(f => seas[f.idx] == null)) return false;
@@ -1265,17 +1253,15 @@
 
     const combined = document.getElementById('pred-combined')?.checked ?? false;
     predCombined = combined;
-    const totalMinRaw = document.getElementById('pred-total-min')?.value;
-    const totalMaxRaw = document.getElementById('pred-total-max')?.value;
-    const seasonsMinRaw = document.getElementById('pred-seasons-min')?.value;
-    const seasonsMaxRaw = document.getElementById('pred-seasons-max')?.value;
-    const totalMin = totalMinRaw !== '' ? parseInt(totalMinRaw) : null;
-    const totalMax = totalMaxRaw !== '' ? parseInt(totalMaxRaw) : null;
-    const seasonsMin = seasonsMinRaw !== '' ? parseInt(seasonsMinRaw) : null;
-    const seasonsMax = seasonsMaxRaw !== '' ? parseInt(seasonsMaxRaw) : null;
+    const quickMinRaw = document.getElementById('pred-quick-min')?.value;
+    const quickMaxRaw = document.getElementById('pred-quick-max')?.value;
+    const quickSeasRaw = document.getElementById('pred-quick-seasons')?.value;
+    const quickMin = quickMinRaw !== '' ? parseInt(quickMinRaw) : null;
+    const quickMax = quickMaxRaw !== '' ? parseInt(quickMaxRaw) : null;
+    const quickSeasons = quickSeasRaw !== '' ? parseInt(quickSeasRaw) : null;
 
     const pool = allData.filter(p => (p.seasons ?? []).length >= MIN_CAREER_SEASONS);
-    const matched = applyPredFilters(pool, { ovr, age, ovrLow: predOvrLow, ovrHigh: predOvrHigh, ageLow: predAgeLow, ageHigh: predAgeHigh, positions, seasonFilters, combined, totalMin, totalMax, seasonsMin, seasonsMax });
+    const matched = applyPredFilters(pool, { ovr, age, ovrLow: predOvrLow, ovrHigh: predOvrHigh, ageLow: predAgeLow, ageHigh: predAgeHigh, positions, seasonFilters, combined, quickMin, quickMax, quickSeasons });
 
     const widenEl = document.getElementById('pred-widen-controls');
     if (widenEl.style.display === 'none') { widenEl.style.display = 'block'; renderPresetButtons(); }
@@ -1433,7 +1419,7 @@
     predCombined = false;
     const cbEl = document.getElementById('pred-combined');
     if (cbEl) cbEl.checked = false;
-    ['pred-total-min','pred-total-max','pred-seasons-min','pred-seasons-max'].forEach(id => {
+    ['pred-quick-min','pred-quick-max','pred-quick-seasons'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
