@@ -118,6 +118,21 @@
       transition: border-color 0.15s;
     }
     select:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: #58a6ff; }
+    /* Hide native number spinners — clunky and easy to mis-click */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
+    .tol-btn {
+      background: #21262d; border: 1px solid #30363d; color: #e6edf3;
+      border-radius: 5px; width: 28px; height: 28px; font-size: 16px; font-weight: 700;
+      cursor: pointer; padding: 0; line-height: 1; flex-shrink: 0;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .tol-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+    .tol-val {
+      width: 42px; text-align: center; background: #0d1117; border: 1px solid #30363d;
+      color: #58a6ff; border-radius: 5px; padding: 4px 0; font-size: 13px; font-weight: 700;
+    }
     #search-input { flex: 1; min-width: 180px; }
 
     /* Table */
@@ -374,14 +389,24 @@
         </div>
         <div id="pred-widen-controls" style="display:none; margin-top:14px; padding:12px 14px; background:#0d1117; border-radius:6px; border:1px solid #21262d">
           <div style="color:#8b949e; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px">Widen search</div>
-          <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center">
-            <div style="display:flex; align-items:center; gap:8px">
-              <span style="color:#8b949e; font-size:12px; min-width:50px">OVR ±</span>
-              <div id="pred-ovr-tol" style="display:flex; gap:4px"></div>
+          <div style="display:flex; gap:28px; flex-wrap:wrap; align-items:center">
+            <div style="display:flex; align-items:center; gap:10px">
+              <span style="color:#8b949e; font-size:12px; min-width:46px">OVR ±</span>
+              <div style="display:flex; align-items:center; gap:5px">
+                <button class="tol-btn" onclick="adjustPredTol('ovr',-1)">−</button>
+                <input type="number" id="pred-ovr-tol-val" class="tol-val" value="0" min="0"
+                  onchange="setPredTol('ovr', Math.max(0, parseInt(this.value)||0))">
+                <button class="tol-btn" onclick="adjustPredTol('ovr',1)">+</button>
+              </div>
             </div>
-            <div style="display:flex; align-items:center; gap:8px">
-              <span style="color:#8b949e; font-size:12px; min-width:50px">Age ±</span>
-              <div id="pred-age-tol" style="display:flex; gap:4px"></div>
+            <div style="display:flex; align-items:center; gap:10px">
+              <span style="color:#8b949e; font-size:12px; min-width:46px">Age ±</span>
+              <div style="display:flex; align-items:center; gap:5px">
+                <button class="tol-btn" onclick="adjustPredTol('age',-1)">−</button>
+                <input type="number" id="pred-age-tol-val" class="tol-val" value="0" min="0"
+                  onchange="setPredTol('age', Math.max(0, parseInt(this.value)||0))">
+                <button class="tol-btn" onclick="adjustPredTol('age',1)">+</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1030,10 +1055,7 @@
     }
 
     ['pred-ovr','pred-age'].forEach(id => {
-      document.getElementById(id).addEventListener('input', () => {
-        predOvrTol = 0; predAgeTol = 0;
-        runPredictionAuto();
-      });
+      document.getElementById(id).addEventListener('input', runPredictionAuto);
     });
     for (let i = 1; i <= PRED_SEASONS; i++) {
       document.getElementById(`pred-s${i}-min`).addEventListener('input', runPredictionAuto);
@@ -1081,19 +1103,20 @@
     });
   }
 
-  function renderWidenButtons() {
-    const tolBtnStyle = (active) =>
-      `background:${active ? '#1f3147' : '#21262d'};border:1px solid ${active ? '#58a6ff' : '#30363d'};` +
-      `color:${active ? '#58a6ff' : '#8b949e'};border-radius:5px;padding:3px 9px;font-size:12px;font-weight:600;cursor:pointer`;
-    document.getElementById('pred-ovr-tol').innerHTML =
-      [0,1,2,3,4,5].map(v => `<button onclick="setPredTol('ovr',${v})" style="${tolBtnStyle(predOvrTol===v)}">±${v}</button>`).join('');
-    document.getElementById('pred-age-tol').innerHTML =
-      [0,1,2,3,4,5].map(v => `<button onclick="setPredTol('age',${v})" style="${tolBtnStyle(predAgeTol===v)}">±${v}</button>`).join('');
+  function adjustPredTol(field, delta) {
+    const current = field === 'ovr' ? predOvrTol : predAgeTol;
+    setPredTol(field, Math.max(0, current + delta));
   }
 
   function setPredTol(field, val) {
-    if (field === 'ovr') predOvrTol = val;
-    else predAgeTol = val;
+    val = Math.max(0, val);
+    if (field === 'ovr') {
+      predOvrTol = val;
+      document.getElementById('pred-ovr-tol-val').value = val;
+    } else {
+      predAgeTol = val;
+      document.getElementById('pred-age-tol-val').value = val;
+    }
     runPrediction();
   }
 
@@ -1110,7 +1133,6 @@
 
     // Show widen controls whenever a search has been run
     document.getElementById('pred-widen-controls').style.display = 'block';
-    renderWidenButtons();
 
     document.getElementById('pred-results').style.display = 'block';
     const countEl = document.getElementById('pred-match-count');
@@ -1260,6 +1282,8 @@
     document.querySelectorAll('#pred-pos-btns .pos-btn.active').forEach(b=>b.classList.remove('active'));
     predOvrTol = 0;
     predAgeTol = 0;
+    document.getElementById('pred-ovr-tol-val').value = 0;
+    document.getElementById('pred-age-tol-val').value = 0;
     document.getElementById('pred-widen-controls').style.display = 'none';
     document.getElementById('pred-results').style.display = 'none';
   }
