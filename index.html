@@ -445,6 +445,10 @@
         <div style="margin-top:14px">
           <div class="pred-field-label">Season progression ranges <span style="font-weight:400;text-transform:none;letter-spacing:0">(leave blank to skip)</span></div>
           <div class="season-filter-row" id="pred-season-filters"></div>
+          <div style="margin-top:10px; display:flex; align-items:center; gap:8px">
+            <input type="checkbox" id="pred-combined" onchange="predCombined=this.checked; runPredictionAuto()" style="width:15px; height:15px; cursor:pointer; accent-color:#58a6ff">
+            <label for="pred-combined" style="color:#8b949e; font-size:13px; cursor:pointer">Combined total across specified seasons</label>
+          </div>
         </div>
         <div style="margin-top:16px; display:flex; gap:10px; align-items:center">
           <button class="pred-run-btn" onclick="runPrediction()">Find Matches</button>
@@ -1032,6 +1036,7 @@
   let predAutoTimer = null;
   let predOvrLow = 0, predOvrHigh = 0;
   let predAgeLow = 0, predAgeHigh = 0;
+  let predCombined = false;
 
   const POS_MAP = {
     GK:  p => p.startsWith('GK'),
@@ -1079,9 +1084,13 @@
       div.className = 'season-filter-item';
       div.innerHTML = `
         <label>S${i}</label>
-        <input type="number" class="pred-num" id="pred-s${i}-min" placeholder="Min" style="width:54px">
+        <button class="tol-btn" onclick="stepPredInput('pred-s${i}-min',-1)">−</button>
+        <input type="number" class="pred-num" id="pred-s${i}-min" placeholder="Min" style="width:46px">
+        <button class="tol-btn" onclick="stepPredInput('pred-s${i}-min',1)">+</button>
         <span style="color:#8b949e;font-size:12px">–</span>
-        <input type="number" class="pred-num" id="pred-s${i}-max" placeholder="Max" style="width:54px">
+        <button class="tol-btn" onclick="stepPredInput('pred-s${i}-max',-1)">−</button>
+        <input type="number" class="pred-num" id="pred-s${i}-max" placeholder="Max" style="width:46px">
+        <button class="tol-btn" onclick="stepPredInput('pred-s${i}-max',1)">+</button>
       `;
       seasonsContainer.appendChild(div);
     }
@@ -1121,15 +1130,24 @@
     return filters;
   }
 
-  function applyPredFilters(players, { ovr, age, ovrLow, ovrHigh, ageLow, ageHigh, positions, seasonFilters }) {
+  function applyPredFilters(players, { ovr, age, ovrLow, ovrHigh, ageLow, ageHigh, positions, seasonFilters, combined }) {
     return players.filter(p => {
       if (ovr != null && ((p.startOvr ?? 0) < ovr - ovrLow || (p.startOvr ?? 0) > ovr + ovrHigh)) return false;
       if (age != null && ((p.mintAge ?? 0) < age - ageLow || (p.mintAge ?? 0) > age + ageHigh)) return false;
       if (!posMatchesCategories(p.position, positions)) return false;
-      for (const f of seasonFilters) {
-        const gain = (p.seasons ?? [])[f.idx];
-        if (gain == null) return false;
-        if (gain < f.min || gain > f.max) return false;
+      if (combined && seasonFilters.length > 0) {
+        const seas = p.seasons ?? [];
+        if (seasonFilters.some(f => seas[f.idx] == null)) return false;
+        const totalGain = seasonFilters.reduce((sum, f) => sum + seas[f.idx], 0);
+        const combinedMin = seasonFilters.reduce((sum, f) => sum + (isFinite(f.min) ? f.min : 0), 0);
+        const combinedMax = seasonFilters.reduce((sum, f) => sum + (isFinite(f.max) ? f.max : Infinity), 0);
+        if (totalGain < combinedMin || totalGain > combinedMax) return false;
+      } else {
+        for (const f of seasonFilters) {
+          const gain = (p.seasons ?? [])[f.idx];
+          if (gain == null) return false;
+          if (gain < f.min || gain > f.max) return false;
+        }
       }
       return true;
     });
@@ -1198,8 +1216,11 @@
     const positions = [...document.querySelectorAll('#pred-pos-btns .pos-btn.active')].map(b => b.dataset.pos);
     const seasonFilters = getSeasonFilters();
 
+    const combined = document.getElementById('pred-combined')?.checked ?? false;
+    predCombined = combined;
+
     const pool = allData.filter(p => (p.seasons ?? []).length >= MIN_CAREER_SEASONS);
-    const matched = applyPredFilters(pool, { ovr, age, ovrLow: predOvrLow, ovrHigh: predOvrHigh, ageLow: predAgeLow, ageHigh: predAgeHigh, positions, seasonFilters });
+    const matched = applyPredFilters(pool, { ovr, age, ovrLow: predOvrLow, ovrHigh: predOvrHigh, ageLow: predAgeLow, ageHigh: predAgeHigh, positions, seasonFilters, combined });
 
     const widenEl = document.getElementById('pred-widen-controls');
     if (widenEl.style.display === 'none') { widenEl.style.display = 'block'; renderPresetButtons(); }
@@ -1354,6 +1375,9 @@
     document.querySelectorAll('#pred-pos-btns .pos-btn.active').forEach(b=>b.classList.remove('active'));
     predOvrLow = 0; predOvrHigh = 0;
     predAgeLow = 0; predAgeHigh = 0;
+    predCombined = false;
+    const cbEl = document.getElementById('pred-combined');
+    if (cbEl) cbEl.checked = false;
     syncWidenInputs();
     document.getElementById('pred-widen-controls').style.display = 'none';
     document.getElementById('pred-results').style.display = 'none';
