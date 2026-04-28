@@ -389,23 +389,47 @@
         </div>
         <div id="pred-widen-controls" style="display:none; margin-top:14px; padding:12px 14px; background:#0d1117; border-radius:6px; border:1px solid #21262d">
           <div style="color:#8b949e; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px">Widen search</div>
-          <div style="display:flex; gap:28px; flex-wrap:wrap; align-items:center">
-            <div style="display:flex; align-items:center; gap:10px">
-              <span style="color:#8b949e; font-size:12px; min-width:46px">OVR ±</span>
-              <div style="display:flex; align-items:center; gap:5px">
-                <button class="tol-btn" onclick="adjustPredTol('ovr',-1)">−</button>
-                <input type="number" id="pred-ovr-tol-val" class="tol-val" value="0" min="0"
-                  onchange="setPredTol('ovr', Math.max(0, parseInt(this.value)||0))">
-                <button class="tol-btn" onclick="adjustPredTol('ovr',1)">+</button>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <!-- OVR row -->
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+              <span style="color:#8b949e; font-size:12px; min-width:30px">OVR</span>
+              <div id="pred-ovr-presets" style="display:flex; gap:4px"></div>
+              <span style="color:#30363d">|</span>
+              <span style="color:#8b949e; font-size:11px">Custom:</span>
+              <div style="display:flex; align-items:center; gap:4px">
+                <span style="color:#8b949e; font-size:11px">Below</span>
+                <button class="tol-btn" onclick="adjustWiden('ovr','low',-1)">−</button>
+                <input type="number" id="pred-ovr-low" class="tol-val" value="0" min="0"
+                  onchange="setWiden('ovr','low', Math.max(0,parseInt(this.value)||0))">
+                <button class="tol-btn" onclick="adjustWiden('ovr','low',1)">+</button>
+              </div>
+              <div style="display:flex; align-items:center; gap:4px">
+                <span style="color:#8b949e; font-size:11px">Above</span>
+                <button class="tol-btn" onclick="adjustWiden('ovr','high',-1)">−</button>
+                <input type="number" id="pred-ovr-high" class="tol-val" value="0" min="0"
+                  onchange="setWiden('ovr','high', Math.max(0,parseInt(this.value)||0))">
+                <button class="tol-btn" onclick="adjustWiden('ovr','high',1)">+</button>
               </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px">
-              <span style="color:#8b949e; font-size:12px; min-width:46px">Age ±</span>
-              <div style="display:flex; align-items:center; gap:5px">
-                <button class="tol-btn" onclick="adjustPredTol('age',-1)">−</button>
-                <input type="number" id="pred-age-tol-val" class="tol-val" value="0" min="0"
-                  onchange="setPredTol('age', Math.max(0, parseInt(this.value)||0))">
-                <button class="tol-btn" onclick="adjustPredTol('age',1)">+</button>
+            <!-- Age row -->
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+              <span style="color:#8b949e; font-size:12px; min-width:30px">Age</span>
+              <div id="pred-age-presets" style="display:flex; gap:4px"></div>
+              <span style="color:#30363d">|</span>
+              <span style="color:#8b949e; font-size:11px">Custom:</span>
+              <div style="display:flex; align-items:center; gap:4px">
+                <span style="color:#8b949e; font-size:11px">Below</span>
+                <button class="tol-btn" onclick="adjustWiden('age','low',-1)">−</button>
+                <input type="number" id="pred-age-low" class="tol-val" value="0" min="0"
+                  onchange="setWiden('age','low', Math.max(0,parseInt(this.value)||0))">
+                <button class="tol-btn" onclick="adjustWiden('age','low',1)">+</button>
+              </div>
+              <div style="display:flex; align-items:center; gap:4px">
+                <span style="color:#8b949e; font-size:11px">Above</span>
+                <button class="tol-btn" onclick="adjustWiden('age','high',-1)">−</button>
+                <input type="number" id="pred-age-high" class="tol-val" value="0" min="0"
+                  onchange="setWiden('age','high', Math.max(0,parseInt(this.value)||0))">
+                <button class="tol-btn" onclick="adjustWiden('age','high',1)">+</button>
               </div>
             </div>
           </div>
@@ -998,8 +1022,8 @@
   let predOpen = true;
   let predInitDone = false;
   let predAutoTimer = null;
-  let predOvrTol = 0;
-  let predAgeTol = 0;
+  let predOvrLow = 0, predOvrHigh = 0;
+  let predAgeLow = 0, predAgeHigh = 0;
 
   const POS_MAP = {
     GK:  p => p.startsWith('GK'),
@@ -1089,10 +1113,10 @@
     return filters;
   }
 
-  function applyPredFilters(players, { ovr, age, ovrTol, ageTol, positions, seasonFilters }) {
+  function applyPredFilters(players, { ovr, age, ovrLow, ovrHigh, ageLow, ageHigh, positions, seasonFilters }) {
     return players.filter(p => {
-      if (ovr != null && Math.abs((p.startOvr ?? 0) - ovr) > ovrTol) return false;
-      if (age != null && Math.abs((p.mintAge ?? 0) - age) > ageTol) return false;
+      if (ovr != null && ((p.startOvr ?? 0) < ovr - ovrLow || (p.startOvr ?? 0) > ovr + ovrHigh)) return false;
+      if (age != null && ((p.mintAge ?? 0) < age - ageLow || (p.mintAge ?? 0) > age + ageHigh)) return false;
       if (!posMatchesCategories(p.position, positions)) return false;
       for (const f of seasonFilters) {
         const gain = (p.seasons ?? [])[f.idx];
@@ -1103,21 +1127,50 @@
     });
   }
 
-  function adjustPredTol(field, delta) {
-    const current = field === 'ovr' ? predOvrTol : predAgeTol;
-    setPredTol(field, Math.max(0, current + delta));
+  function setWiden(field, side, val) {
+    val = Math.max(0, val);
+    if (field === 'ovr') { if (side === 'low') predOvrLow = val; else predOvrHigh = val; }
+    else                  { if (side === 'low') predAgeLow = val; else predAgeHigh = val; }
+    syncWidenInputs();
+    renderPresetButtons();
+    runPrediction();
   }
 
-  function setPredTol(field, val) {
-    val = Math.max(0, val);
-    if (field === 'ovr') {
-      predOvrTol = val;
-      document.getElementById('pred-ovr-tol-val').value = val;
-    } else {
-      predAgeTol = val;
-      document.getElementById('pred-age-tol-val').value = val;
-    }
+  function adjustWiden(field, side, delta) {
+    const cur = field === 'ovr'
+      ? (side === 'low' ? predOvrLow : predOvrHigh)
+      : (side === 'low' ? predAgeLow : predAgeHigh);
+    setWiden(field, side, cur + delta);
+  }
+
+  function setPreset(field, val) {
+    if (field === 'ovr') { predOvrLow = val; predOvrHigh = val; }
+    else                 { predAgeLow = val; predAgeHigh = val; }
+    syncWidenInputs();
+    renderPresetButtons();
     runPrediction();
+  }
+
+  function syncWidenInputs() {
+    document.getElementById('pred-ovr-low').value  = predOvrLow;
+    document.getElementById('pred-ovr-high').value = predOvrHigh;
+    document.getElementById('pred-age-low').value  = predAgeLow;
+    document.getElementById('pred-age-high').value = predAgeHigh;
+  }
+
+  function renderPresetButtons() {
+    ['ovr','age'].forEach(field => {
+      const low  = field === 'ovr' ? predOvrLow  : predAgeLow;
+      const high = field === 'ovr' ? predOvrHigh : predAgeHigh;
+      const symmetric = (low === high && low > 0) ? low : null;
+      document.getElementById(`pred-${field}-presets`).innerHTML =
+        [1,2,3,4,5].map(v => {
+          const active = symmetric === v;
+          return `<button onclick="setPreset('${field}',${v})"
+            style="background:${active?'#1f3147':'#21262d'};border:1px solid ${active?'#58a6ff':'#30363d'};
+            color:${active?'#58a6ff':'#8b949e'};border-radius:5px;padding:3px 9px;font-size:12px;font-weight:600;cursor:pointer">±${v}</button>`;
+        }).join('');
+    });
   }
 
   function runPrediction() {
@@ -1129,10 +1182,10 @@
     const seasonFilters = getSeasonFilters();
 
     const pool = allData.filter(p => (p.seasons ?? []).length >= MIN_CAREER_SEASONS);
-    const matched = applyPredFilters(pool, { ovr, age, ovrTol: predOvrTol, ageTol: predAgeTol, positions, seasonFilters });
+    const matched = applyPredFilters(pool, { ovr, age, ovrLow: predOvrLow, ovrHigh: predOvrHigh, ageLow: predAgeLow, ageHigh: predAgeHigh, positions, seasonFilters });
 
-    // Show widen controls whenever a search has been run
-    document.getElementById('pred-widen-controls').style.display = 'block';
+    const widenEl = document.getElementById('pred-widen-controls');
+    if (widenEl.style.display === 'none') { widenEl.style.display = 'block'; renderPresetButtons(); }
 
     document.getElementById('pred-results').style.display = 'block';
     const countEl = document.getElementById('pred-match-count');
@@ -1144,8 +1197,10 @@
       return;
     }
 
-    const widenNote = (predOvrTol > 0 || predAgeTol > 0)
-      ? ` <span style="color:#8b949e;font-size:12px">(OVR ±${predOvrTol}, Age ±${predAgeTol})</span>` : '';
+    const ovrNote = (predOvrLow || predOvrHigh) ? `OVR −${predOvrLow}/+${predOvrHigh}` : '';
+    const ageNote = (predAgeLow || predAgeHigh) ? `Age −${predAgeLow}/+${predAgeHigh}` : '';
+    const widenNote = (ovrNote || ageNote)
+      ? ` <span style="color:#8b949e;font-size:12px">(${[ovrNote,ageNote].filter(Boolean).join(', ')})</span>` : '';
     countEl.innerHTML = `<strong style="color:#e6edf3">${matched.length}</strong> <span style="color:#8b949e">matching players</span>${widenNote}`;
 
     const growths = matched.map(p => p.careerGrowth ?? 0).sort((a, b) => a - b);
@@ -1280,10 +1335,9 @@
       document.getElementById(`pred-s${i}-max`).value='';
     }
     document.querySelectorAll('#pred-pos-btns .pos-btn.active').forEach(b=>b.classList.remove('active'));
-    predOvrTol = 0;
-    predAgeTol = 0;
-    document.getElementById('pred-ovr-tol-val').value = 0;
-    document.getElementById('pred-age-tol-val').value = 0;
+    predOvrLow = 0; predOvrHigh = 0;
+    predAgeLow = 0; predAgeHigh = 0;
+    syncWidenInputs();
     document.getElementById('pred-widen-controls').style.display = 'none';
     document.getElementById('pred-results').style.display = 'none';
   }
