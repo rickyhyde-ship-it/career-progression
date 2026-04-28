@@ -376,11 +376,19 @@
         <div class="pred-input-grid">
           <div>
             <div class="pred-field-label">Start OVR</div>
-            <input type="number" class="pred-num" id="pred-ovr" placeholder="e.g. 52" min="0" max="99" style="width:80px">
+            <div style="display:flex; align-items:center; gap:5px">
+              <button class="tol-btn" onclick="stepPredInput('pred-ovr',-1)">−</button>
+              <input type="number" class="pred-num" id="pred-ovr" placeholder="52" min="0" max="99" style="width:54px; text-align:center">
+              <button class="tol-btn" onclick="stepPredInput('pred-ovr',1)">+</button>
+            </div>
           </div>
           <div>
             <div class="pred-field-label">Mint Age</div>
-            <input type="number" class="pred-num" id="pred-age" placeholder="e.g. 24" min="15" max="40" style="width:80px">
+            <div style="display:flex; align-items:center; gap:5px">
+              <button class="tol-btn" onclick="stepPredInput('pred-age',-1)">−</button>
+              <input type="number" class="pred-num" id="pred-age" placeholder="24" min="0" max="60" style="width:54px; text-align:center">
+              <button class="tol-btn" onclick="stepPredInput('pred-age',1)">+</button>
+            </div>
           </div>
           <div>
             <div class="pred-field-label">Position/s</div>
@@ -1171,6 +1179,15 @@
             color:${active?'#58a6ff':'#8b949e'};border-radius:5px;padding:3px 9px;font-size:12px;font-weight:600;cursor:pointer">±${v}</button>`;
         }).join('');
     });
+  }
+
+  function stepPredInput(id, delta) {
+    const el = document.getElementById(id);
+    const cur = parseInt(el.value) || 0;
+    const min = parseInt(el.min) || 0;
+    const max = parseInt(el.max) || 999;
+    el.value = Math.min(max, Math.max(min, cur + delta));
+    el.dispatchEvent(new Event('input'));
   }
 
   function runPrediction() {
