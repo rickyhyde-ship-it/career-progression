@@ -1285,12 +1285,17 @@
     const growths = matched.map(p => p.careerGrowth ?? 0).sort((a, b) => a - b);
     const finalOvrs = matched.map(p => p.currentOvr ?? 0).sort((a, b) => a - b);
     const fmt = v => (v >= 0 ? '+' : '') + v;
+    const n = matched.length;
     document.getElementById('pred-stats').innerHTML = `
-      <div class="stat-pill"><div class="stat-pill-label">P10 Career</div><div class="stat-pill-val">${fmt(pct(growths,10))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Bottom 1% (n=${Math.round(n*0.01)||1})</div><div class="stat-pill-val">${fmt(pct(growths,1))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Bottom 5% (n=${Math.round(n*0.05)||1})</div><div class="stat-pill-val">${fmt(pct(growths,5))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Bottom 10% (n=${Math.round(n*0.1)||1})</div><div class="stat-pill-val">${fmt(pct(growths,10))}</div></div>
       <div class="stat-pill"><div class="stat-pill-label">P25 Career</div><div class="stat-pill-val">${fmt(pct(growths,25))}</div></div>
       <div class="stat-pill"><div class="stat-pill-label">Median Career</div><div class="stat-pill-val">${fmt(pct(growths,50))}</div></div>
       <div class="stat-pill"><div class="stat-pill-label">P75 Career</div><div class="stat-pill-val">${fmt(pct(growths,75))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">P90 Career</div><div class="stat-pill-val">${fmt(pct(growths,90))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Top 10% (n=${Math.round(n*0.1)||1})</div><div class="stat-pill-val">${fmt(pct(growths,90))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Top 5% (n=${Math.round(n*0.05)||1})</div><div class="stat-pill-val">${fmt(pct(growths,95))}</div></div>
+      <div class="stat-pill"><div class="stat-pill-label">Top 1% (n=${Math.round(n*0.01)||1})</div><div class="stat-pill-val">${fmt(pct(growths,99))}</div></div>
       <div class="stat-pill"><div class="stat-pill-label">Median Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs,50)}</div></div>
       <div class="stat-pill"><div class="stat-pill-label">P75 Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs,75)}</div></div>
     `;
@@ -1321,11 +1326,7 @@
         .filter(v => v != null)
         .sort((a, b) => a - b);
       if (vals.length >= MIN_N) {
-        points.push({ i, n: vals.length,
-          p1: pct(vals,1), p5: pct(vals,5), p10: pct(vals,10),
-          p25: pct(vals,25), median: pct(vals,50),
-          p75: pct(vals,75), p90: pct(vals,90), p95: pct(vals,95), p99: pct(vals,99)
-        });
+        points.push({ i, n: vals.length, p25: pct(vals,25), median: pct(vals,50), p75: pct(vals,75) });
       }
     }
     if (points.length < 2) { document.getElementById('pred-chart-container').innerHTML = ''; return; }
@@ -1334,19 +1335,15 @@
     const W=600, H=185, Pad={t:12,r:14,b:44,l:42};
     const cW=W-Pad.l-Pad.r, cH=H-Pad.t-Pad.b;
     const maxSeasPlotted = points[points.length - 1].i;
-    const minGain = Math.min(0, ...points.map(d=>d.p5));
-    const maxGain = Math.max(...points.map(d=>d.p95));
+    const minGain = Math.min(0, ...points.map(d=>d.p25));
+    const maxGain = Math.max(...points.map(d=>d.p75));
     const pad = Math.max(1, Math.round((maxGain - minGain) * 0.05));
     const lo = minGain - pad, hi = maxGain + pad;
     const x = i => Pad.l+(i/maxSeasPlotted)*cW;
     const y = v => Pad.t+cH-((v-lo)/(hi-lo||1))*cH;
 
-    const makePoly = (topKey, botKey) => {
-      const top = points.map(d=>`${x(d.i).toFixed(1)},${y(d[topKey]).toFixed(1)}`).join(' ');
-      const bot = [...points].reverse().map(d=>`${x(d.i).toFixed(1)},${y(d[botKey]).toFixed(1)}`).join(' ');
-      return `${top} ${bot}`;
-    };
-
+    const bandTop = points.map(d=>`${x(d.i).toFixed(1)},${y(d.p75).toFixed(1)}`).join(' ');
+    const bandBot = [...points].reverse().map(d=>`${x(d.i).toFixed(1)},${y(d.p25).toFixed(1)}`).join(' ');
     const medLine = points.map(d=>`${x(d.i).toFixed(1)},${y(d.median).toFixed(1)}`).join(' ');
     const rawStep=(hi-lo)/4;
     const step=Math.max(1,Math.ceil(rawStep/5)*5);
@@ -1354,35 +1351,20 @@
     const xStep=Math.max(1,Math.ceil(maxSeasPlotted/8));
     const xTicks=points.filter(d=>d.i%xStep===0);
 
-    // Bands drawn back-to-front; overlapping layers create a natural gradient
-    const bands = [
-      { top:'p99', bot:'p1', fill:'rgba(63,185,80,0.06)' },
-      { top:'p95', bot:'p5', fill:'rgba(63,185,80,0.09)' },
-      { top:'p90', bot:'p10', fill:'rgba(63,185,80,0.13)' },
-      { top:'p75', bot:'p25', fill:'rgba(63,185,80,0.20)' },
-    ];
-
-    const legendItems = [
-      { fill:'rgba(63,185,80,0.48)', label:'P25–P75' },
-      { fill:'rgba(63,185,80,0.28)', label:'P10–P90' },
-      { fill:'rgba(63,185,80,0.15)', label:'P5–P95' },
-      { fill:'rgba(63,185,80,0.06)', label:'P1–P99' },
-    ];
-
     document.getElementById('pred-chart-container').innerHTML = `
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;flex-wrap:wrap">
-        <span style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Cumulative OVR gain · ${valid.length} players</span>
-        <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          ${legendItems.map(l=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#8b949e"><span style="display:inline-block;width:18px;height:8px;background:${l.fill};border-radius:2px"></span>${l.label}</span>`).join('')}
-          <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#3fb950"><span style="display:inline-block;width:18px;height:2px;background:#3fb950;border-radius:1px;margin-bottom:1px"></span>Median</span>
-        </span>
+      <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">
+        Cumulative OVR gain — median + P25–P75 band · ${valid.length} players${lastN < valid.length ? ` (fades where data thins)` : ''}
       </div>
       <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
+        <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#3fb950" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#3fb950" stop-opacity="0.04"/>
+        </linearGradient></defs>
         ${yTicks.map(v=>`
           <line x1="${Pad.l}" y1="${y(v).toFixed(1)}" x2="${W-Pad.r}" y2="${y(v).toFixed(1)}" stroke="#21262d" stroke-width="1"/>
           <text x="${Pad.l-4}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" fill="#8b949e" font-size="10">${v>=0?'+':''}${v}</text>
         `).join('')}
-        ${bands.map(b=>`<polygon points="${makePoly(b.top,b.bot)}" fill="${b.fill}"/>`).join('')}
+        <polygon points="${bandTop} ${bandBot}" fill="url(#bg)"/>
         <polyline points="${medLine}" fill="none" stroke="#3fb950" stroke-width="2" stroke-linejoin="round"/>
         ${xTicks.map(d=>{
           const fade = d.n < valid.length * 0.5 ? ` opacity="${(0.4+0.6*(d.n/valid.length)).toFixed(2)}"` : '';
