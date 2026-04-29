@@ -283,7 +283,9 @@
       font-size: 13px;
       cursor: pointer;
     }
-    .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .stat-pills { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .stat-pills-row-label { color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .stat-pills-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .stat-pill { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 8px 14px; min-width: 80px; }
     .stat-pill-label { color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .stat-pill-val { color: #3fb950; font-size: 17px; font-weight: 700; }
@@ -1286,19 +1288,39 @@
     const finalOvrs = matched.map(p => p.currentOvr ?? 0).sort((a, b) => a - b);
     const fmt = v => (v >= 0 ? '+' : '') + v;
     const n = matched.length;
-    document.getElementById('pred-stats').innerHTML = `
-      <div class="stat-pill"><div class="stat-pill-label">Bottom 1% (n=${Math.round(n*0.01)||1})</div><div class="stat-pill-val">${fmt(pct(growths,1))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Bottom 5% (n=${Math.round(n*0.05)||1})</div><div class="stat-pill-val">${fmt(pct(growths,5))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Bottom 10% (n=${Math.round(n*0.1)||1})</div><div class="stat-pill-val">${fmt(pct(growths,10))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">P25 Career</div><div class="stat-pill-val">${fmt(pct(growths,25))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Median Career</div><div class="stat-pill-val">${fmt(pct(growths,50))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">P75 Career</div><div class="stat-pill-val">${fmt(pct(growths,75))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Top 10% (n=${Math.round(n*0.1)||1})</div><div class="stat-pill-val">${fmt(pct(growths,90))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Top 5% (n=${Math.round(n*0.05)||1})</div><div class="stat-pill-val">${fmt(pct(growths,95))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Top 1% (n=${Math.round(n*0.01)||1})</div><div class="stat-pill-val">${fmt(pct(growths,99))}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">Median Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs,50)}</div></div>
-      <div class="stat-pill"><div class="stat-pill-label">P75 Final OVR</div><div class="stat-pill-val blue">${pct(finalOvrs,75)}</div></div>
-    `;
+    const cn = f => Math.max(1, Math.round(n * f));
+    const pill = (label, val, cls='') =>
+      `<div class="stat-pill"><div class="stat-pill-label">${label}</div><div class="stat-pill-val${cls ? ' '+cls : ''}">${val}</div></div>`;
+    const row = (label, pills) =>
+      `<div><div class="stat-pills-row-label">${label}</div><div class="stat-pills-row">${pills}</div></div>`;
+
+    document.getElementById('pred-stats').innerHTML =
+      row('Total Progression — Bottom',
+        pill(`Bottom 1% (n=${cn(0.01)})`,  fmt(pct(growths,1)))  +
+        pill(`Bottom 5% (n=${cn(0.05)})`,  fmt(pct(growths,5)))  +
+        pill(`Bottom 10% (n=${cn(0.1)})`,  fmt(pct(growths,10))) +
+        pill(`Bottom 25% (n=${cn(0.25)})`, fmt(pct(growths,25)))
+      ) +
+      row('Final OVR — Bottom',
+        pill(`Bottom 1% (n=${cn(0.01)})`,  pct(finalOvrs,1),  'blue') +
+        pill(`Bottom 5% (n=${cn(0.05)})`,  pct(finalOvrs,5),  'blue') +
+        pill(`Bottom 10% (n=${cn(0.1)})`,  pct(finalOvrs,10), 'blue') +
+        pill(`Bottom 25% (n=${cn(0.25)})`, pct(finalOvrs,25), 'blue')
+      ) +
+      row('Total Progression — Top',
+        pill(`Median (n=${n})`,            fmt(pct(growths,50))) +
+        pill(`Top 75% (n=${cn(0.25)})`,    fmt(pct(growths,75))) +
+        pill(`Top 10% (n=${cn(0.1)})`,     fmt(pct(growths,90))) +
+        pill(`Top 5% (n=${cn(0.05)})`,     fmt(pct(growths,95))) +
+        pill(`Top 1% (n=${cn(0.01)})`,     fmt(pct(growths,99)))
+      ) +
+      row('Final OVR — Top',
+        pill(`Median (n=${n})`,            pct(finalOvrs,50), 'blue') +
+        pill(`Top 75% (n=${cn(0.25)})`,    pct(finalOvrs,75), 'blue') +
+        pill(`Top 10% (n=${cn(0.1)})`,     pct(finalOvrs,90), 'blue') +
+        pill(`Top 5% (n=${cn(0.05)})`,     pct(finalOvrs,95), 'blue') +
+        pill(`Top 1% (n=${cn(0.01)})`,     pct(finalOvrs,99), 'blue')
+      );
 
     drawGrowthChart(matched);
     drawMatchesTable(matched, seasonFilters);
