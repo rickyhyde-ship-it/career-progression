@@ -290,6 +290,10 @@
     .stat-pill-label { color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .stat-pill-val { color: #3fb950; font-size: 17px; font-weight: 700; }
     .stat-pill-val.blue { color: #58a6ff; }
+    .stat-pill-big { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 14px 18px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; flex: 1; }
+    .stat-pill-val-big { font-size: 38px; font-weight: 700; color: #3fb950; line-height: 1.1; margin: 6px 0 2px; }
+    .stat-pill-val-big.blue { color: #58a6ff; }
+    .chart-toggle-btn { background: #21262d; border: 1px solid #30363d; color: #6e7681; border-radius: 4px; padding: 3px 10px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 
     /* PAT Modal */
     .modal-overlay {
@@ -1058,6 +1062,19 @@
   let predOvrLow = 0, predOvrHigh = 0;
   let predAgeLow = 0, predAgeHigh = 0;
   let predCombined = false;
+  let chartPoints = null;
+  let chartToggles = new Set(['med']);
+  const CHART_LINES = [
+    { key: 'b1',  label: 'Bottom 1%',  pctKey: 'p1',     color: '#f85149' },
+    { key: 'b5',  label: 'Bottom 5%',  pctKey: 'p5',     color: '#ffa657' },
+    { key: 'b10', label: 'Bottom 10%', pctKey: 'p10',    color: '#d29922' },
+    { key: 'b25', label: 'Bottom 25%', pctKey: 'p25',    color: '#8b949e' },
+    { key: 'med', label: 'Median',     pctKey: 'median', color: '#3fb950' },
+    { key: 't75', label: 'Top 75%',    pctKey: 'p75',    color: '#79c0ff' },
+    { key: 't10', label: 'Top 10%',    pctKey: 'p90',    color: '#58a6ff' },
+    { key: 't5',  label: 'Top 5%',     pctKey: 'p95',    color: '#a371f7' },
+    { key: 't1',  label: 'Top 1%',     pctKey: 'p99',    color: '#e6edf3' },
+  ];
 
   const POS_MAP = {
     GK:  p => p.startsWith('GK'),
@@ -1291,39 +1308,71 @@
     const cn = f => Math.max(1, Math.round(n * f));
     const pill = (label, val, cls='') =>
       `<div class="stat-pill"><div class="stat-pill-label">${label}</div><div class="stat-pill-val${cls ? ' '+cls : ''}">${val}</div></div>`;
-    const row = (label, pills) =>
-      `<div><div class="stat-pills-row-label">${label}</div><div class="stat-pills-row">${pills}</div></div>`;
 
-    document.getElementById('pred-stats').innerHTML =
-      row('Total Progression — Bottom',
-        pill(`Bottom 1% (n=${cn(0.01)})`,  fmt(pct(growths,1)))  +
-        pill(`Bottom 5% (n=${cn(0.05)})`,  fmt(pct(growths,5)))  +
-        pill(`Bottom 10% (n=${cn(0.1)})`,  fmt(pct(growths,10))) +
-        pill(`Bottom 25% (n=${cn(0.25)})`, fmt(pct(growths,25)))
-      ) +
-      row('Final OVR — Bottom',
-        pill(`Bottom 1% (n=${cn(0.01)})`,  pct(finalOvrs,1),  'blue') +
-        pill(`Bottom 5% (n=${cn(0.05)})`,  pct(finalOvrs,5),  'blue') +
-        pill(`Bottom 10% (n=${cn(0.1)})`,  pct(finalOvrs,10), 'blue') +
-        pill(`Bottom 25% (n=${cn(0.25)})`, pct(finalOvrs,25), 'blue')
-      ) +
-      row('Total Progression — Top',
-        pill(`Median (n=${n})`,            fmt(pct(growths,50))) +
-        pill(`Top 75% (n=${cn(0.25)})`,    fmt(pct(growths,75))) +
-        pill(`Top 10% (n=${cn(0.1)})`,     fmt(pct(growths,90))) +
-        pill(`Top 5% (n=${cn(0.05)})`,     fmt(pct(growths,95))) +
-        pill(`Top 1% (n=${cn(0.01)})`,     fmt(pct(growths,99)))
-      ) +
-      row('Final OVR — Top',
-        pill(`Median (n=${n})`,            pct(finalOvrs,50), 'blue') +
-        pill(`Top 75% (n=${cn(0.25)})`,    pct(finalOvrs,75), 'blue') +
-        pill(`Top 10% (n=${cn(0.1)})`,     pct(finalOvrs,90), 'blue') +
-        pill(`Top 5% (n=${cn(0.05)})`,     pct(finalOvrs,95), 'blue') +
-        pill(`Top 1% (n=${cn(0.01)})`,     pct(finalOvrs,99), 'blue')
-      );
+    document.getElementById('pred-stats').innerHTML = `
+      <div style="display:flex; gap:14px; margin-bottom:10px; align-items:stretch">
+        <div style="flex:1; min-width:0">
+          <div class="stat-pills-row-label">Total Progression — Bottom</div>
+          <div class="stat-pills-row">
+            ${pill(`Bottom 1% (n=${cn(0.01)})`,  fmt(pct(growths,1)))}
+            ${pill(`Bottom 5% (n=${cn(0.05)})`,  fmt(pct(growths,5)))}
+            ${pill(`Bottom 10% (n=${cn(0.1)})`,  fmt(pct(growths,10)))}
+            ${pill(`Bottom 25% (n=${cn(0.25)})`, fmt(pct(growths,25)))}
+          </div>
+          <div style="margin-top:10px">
+            <div class="stat-pills-row-label">Final OVR — Bottom</div>
+            <div class="stat-pills-row">
+              ${pill(`Bottom 1% (n=${cn(0.01)})`,  pct(finalOvrs,1),  'blue')}
+              ${pill(`Bottom 5% (n=${cn(0.05)})`,  pct(finalOvrs,5),  'blue')}
+              ${pill(`Bottom 10% (n=${cn(0.1)})`,  pct(finalOvrs,10), 'blue')}
+              ${pill(`Bottom 25% (n=${cn(0.25)})`, pct(finalOvrs,25), 'blue')}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; min-width:130px">
+          <div class="stat-pill-big">
+            <div class="stat-pill-label">Median (n=${n})</div>
+            <div class="stat-pill-val-big">${fmt(pct(growths,50))}</div>
+            <div class="stat-pill-label" style="margin-top:2px">Total Progression</div>
+          </div>
+          <div class="stat-pill-big">
+            <div class="stat-pill-label">Median (n=${n})</div>
+            <div class="stat-pill-val-big blue">${pct(finalOvrs,50)}</div>
+            <div class="stat-pill-label" style="margin-top:2px">Final OVR</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="stat-pills-row-label">Total Progression — Top</div>
+        <div class="stat-pills-row">
+          ${pill(`Top 75% (n=${cn(0.25)})`, fmt(pct(growths,75)))}
+          ${pill(`Top 10% (n=${cn(0.1)})`,  fmt(pct(growths,90)))}
+          ${pill(`Top 5% (n=${cn(0.05)})`,  fmt(pct(growths,95)))}
+          ${pill(`Top 1% (n=${cn(0.01)})`,  fmt(pct(growths,99)))}
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="stat-pills-row-label">Final OVR — Top</div>
+        <div class="stat-pills-row">
+          ${pill(`Top 75% (n=${cn(0.25)})`, pct(finalOvrs,75), 'blue')}
+          ${pill(`Top 10% (n=${cn(0.1)})`,  pct(finalOvrs,90), 'blue')}
+          ${pill(`Top 5% (n=${cn(0.05)})`,  pct(finalOvrs,95), 'blue')}
+          ${pill(`Top 1% (n=${cn(0.01)})`,  pct(finalOvrs,99), 'blue')}
+        </div>
+      </div>
+    `;
 
     drawGrowthChart(matched);
     drawMatchesTable(matched, seasonFilters);
+  }
+
+  function toggleChartLine(key) {
+    if (chartToggles.has(key)) {
+      if (chartToggles.size > 1) chartToggles.delete(key);
+    } else {
+      chartToggles.add(key);
+    }
+    _renderChartSvg();
   }
 
   function drawGrowthChart(players) {
@@ -1333,66 +1382,90 @@
         '<p style="color:#8b949e;font-size:12px">OVR trajectory unavailable — run a new scan to collect this data.</p>';
       return;
     }
-
     const maxSeas = Math.max(...valid.map(p => p.seasons.length));
     const MIN_N = Math.max(3, Math.ceil(valid.length * 0.75));
     const points = [];
     for (let i = 0; i <= maxSeas; i++) {
-      const vals = valid
-        .map(p => {
-          if (i === 0) return 0;
-          const s = p.seasons ?? [];
-          if (s.length < i) return null;
-          return s.slice(0, i).reduce((sum, g) => sum + g, 0);
-        })
-        .filter(v => v != null)
-        .sort((a, b) => a - b);
+      const vals = valid.map(p => {
+        if (i === 0) return 0;
+        const s = p.seasons ?? [];
+        if (s.length < i) return null;
+        return s.slice(0, i).reduce((sum, g) => sum + g, 0);
+      }).filter(v => v != null).sort((a, b) => a - b);
       if (vals.length >= MIN_N) {
-        points.push({ i, n: vals.length, p25: pct(vals,25), median: pct(vals,50), p75: pct(vals,75) });
+        points.push({ i, n: vals.length,
+          p1: pct(vals,1), p5: pct(vals,5), p10: pct(vals,10),
+          p25: pct(vals,25), median: pct(vals,50),
+          p75: pct(vals,75), p90: pct(vals,90), p95: pct(vals,95), p99: pct(vals,99)
+        });
       }
     }
-    if (points.length < 2) { document.getElementById('pred-chart-container').innerHTML = ''; return; }
+    chartPoints = points.length >= 2 ? { points, totalPlayers: valid.length } : null;
+    _renderChartSvg();
+  }
 
-    const lastN = points[points.length - 1].n;
-    const W=600, H=185, Pad={t:12,r:14,b:44,l:42};
+  function _renderChartSvg() {
+    const el = document.getElementById('pred-chart-container');
+    if (!chartPoints) { el.innerHTML = ''; return; }
+    const { points, totalPlayers } = chartPoints;
+
+    const W=620, H=190, Pad={t:12,r:16,b:44,l:44};
     const cW=W-Pad.l-Pad.r, cH=H-Pad.t-Pad.b;
     const maxSeasPlotted = points[points.length - 1].i;
-    const minGain = Math.min(0, ...points.map(d=>d.p25));
-    const maxGain = Math.max(...points.map(d=>d.p75));
-    const pad = Math.max(1, Math.round((maxGain - minGain) * 0.05));
-    const lo = minGain - pad, hi = maxGain + pad;
-    const x = i => Pad.l+(i/maxSeasPlotted)*cW;
-    const y = v => Pad.t+cH-((v-lo)/(hi-lo||1))*cH;
+
+    const activeLines = CHART_LINES.filter(l => chartToggles.has(l.key));
+    const allVals = points.flatMap(d =>
+      [...activeLines.map(l => d[l.pctKey]), d.p25, d.p75]
+    );
+    const minGain = Math.min(0, ...allVals);
+    const maxGain = Math.max(...allVals);
+    const padV = Math.max(1, Math.round((maxGain - minGain) * 0.08));
+    const lo = minGain - padV, hi = maxGain + padV;
+    const x = i => Pad.l + (i / maxSeasPlotted) * cW;
+    const y = v => Pad.t + cH - ((v - lo) / (hi - lo || 1)) * cH;
 
     const bandTop = points.map(d=>`${x(d.i).toFixed(1)},${y(d.p75).toFixed(1)}`).join(' ');
     const bandBot = [...points].reverse().map(d=>`${x(d.i).toFixed(1)},${y(d.p25).toFixed(1)}`).join(' ');
-    const medLine = points.map(d=>`${x(d.i).toFixed(1)},${y(d.median).toFixed(1)}`).join(' ');
-    const rawStep=(hi-lo)/4;
-    const step=Math.max(1,Math.ceil(rawStep/5)*5);
-    const yTicks=[]; for(let v=Math.ceil(lo/step)*step;v<=hi;v+=step) yTicks.push(v);
-    const xStep=Math.max(1,Math.ceil(maxSeasPlotted/8));
-    const xTicks=points.filter(d=>d.i%xStep===0);
 
-    document.getElementById('pred-chart-container').innerHTML = `
-      <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">
-        Cumulative OVR gain — median + P25–P75 band · ${valid.length} players${lastN < valid.length ? ` (fades where data thins)` : ''}
-      </div>
+    const rawStep = (hi - lo) / 4;
+    const step = Math.max(1, Math.ceil(rawStep / 5) * 5);
+    const yTicks = []; for (let v = Math.ceil(lo/step)*step; v <= hi; v += step) yTicks.push(v);
+    const xStep = Math.max(1, Math.ceil(maxSeasPlotted / 8));
+    const xTicks = points.filter(d => d.i % xStep === 0);
+
+    const toggleHtml = CHART_LINES.map(l => {
+      const active = chartToggles.has(l.key);
+      const st = active
+        ? `background:${l.color}22;border-color:${l.color};color:${l.color};`
+        : '';
+      return `<button class="chart-toggle-btn" style="${st}" onclick="toggleChartLine('${l.key}')">${l.label}</button>`;
+    }).join('');
+
+    const linesHtml = activeLines.map(l => {
+      const pts = points.map(d=>`${x(d.i).toFixed(1)},${y(d[l.pctKey]).toFixed(1)}`).join(' ');
+      const sw = l.key === 'med' ? 2.5 : 1.5;
+      const dots = points.map(d => {
+        const fade = d.n < totalPlayers * 0.5 ? ` opacity="${(0.4+0.6*(d.n/totalPlayers)).toFixed(2)}"` : '';
+        return `<circle cx="${x(d.i).toFixed(1)}" cy="${y(d[l.pctKey]).toFixed(1)}" r="${l.key==='med'?3.5:2.5}" fill="${l.color}" stroke="#0d1117" stroke-width="1.5"${fade}/>`;
+      }).join('');
+      return `<polyline points="${pts}" fill="none" stroke="${l.color}" stroke-width="${sw}" stroke-linejoin="round"/>${dots}`;
+    }).join('');
+
+    el.innerHTML = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${toggleHtml}</div>
       <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">
-        <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#3fb950" stop-opacity="0.18"/>
-          <stop offset="100%" stop-color="#3fb950" stop-opacity="0.04"/>
-        </linearGradient></defs>
         ${yTicks.map(v=>`
-          <line x1="${Pad.l}" y1="${y(v).toFixed(1)}" x2="${W-Pad.r}" y2="${y(v).toFixed(1)}" stroke="#21262d" stroke-width="1"/>
-          <text x="${Pad.l-4}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" fill="#8b949e" font-size="10">${v>=0?'+':''}${v}</text>
+          <line x1="${Pad.l}" y1="${y(v).toFixed(1)}" x2="${W-Pad.r}" y2="${y(v).toFixed(1)}" stroke="#ccc" stroke-opacity="0.1" stroke-width="1"/>
+          <text x="${Pad.l-5}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" fill="#6e7681" font-size="10">${v>=0?'+':''}${v}</text>
         `).join('')}
-        <polygon points="${bandTop} ${bandBot}" fill="url(#bg)"/>
-        <polyline points="${medLine}" fill="none" stroke="#3fb950" stroke-width="2" stroke-linejoin="round"/>
+        <polygon points="${bandTop} ${bandBot}" fill="rgba(63,185,80,0.08)"/>
+        ${linesHtml}
         ${xTicks.map(d=>{
-          const fade = d.n < valid.length * 0.5 ? ` opacity="${(0.4+0.6*(d.n/valid.length)).toFixed(2)}"` : '';
+          const fade = d.n < totalPlayers * 0.5 ? ` opacity="${(0.4+0.6*(d.n/totalPlayers)).toFixed(2)}"` : '';
           return `
-            <text x="${x(d.i).toFixed(1)}" y="${(H-Pad.b+14).toFixed(0)}" text-anchor="middle" fill="#8b949e" font-size="10"${fade}>S${d.i}</text>
-            <text x="${x(d.i).toFixed(1)}" y="${(H-Pad.b+27).toFixed(0)}" text-anchor="middle" fill="#4a5568" font-size="9"${fade}>n=${d.n}</text>
+            <line x1="${x(d.i).toFixed(1)}" y1="${(H-Pad.b).toFixed(0)}" x2="${x(d.i).toFixed(1)}" y2="${(H-Pad.b+4).toFixed(0)}" stroke="#30363d" stroke-width="1"${fade}/>
+            <text x="${x(d.i).toFixed(1)}" y="${(H-Pad.b+15).toFixed(0)}" text-anchor="middle" fill="#8b949e" font-size="10"${fade}>S${d.i}</text>
+            <text x="${x(d.i).toFixed(1)}" y="${(H-Pad.b+28).toFixed(0)}" text-anchor="middle" fill="#484f58" font-size="9"${fade}>n=${d.n}</text>
           `;
         }).join('')}
         <line x1="${Pad.l}" y1="${Pad.t}" x2="${Pad.l}" y2="${H-Pad.b}" stroke="#30363d" stroke-width="1"/>
@@ -1445,6 +1518,7 @@
     predOvrLow = 0; predOvrHigh = 0;
     predAgeLow = 0; predAgeHigh = 0;
     predCombined = false;
+    chartPoints = null;
     const cbEl = document.getElementById('pred-combined');
     if (cbEl) cbEl.checked = false;
     ['pred-quick-min','pred-quick-max','pred-quick-seasons'].forEach(id => {
