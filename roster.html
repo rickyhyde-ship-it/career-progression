@@ -74,6 +74,10 @@
     .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
 
     .no-data { text-align: center; padding: 48px; color: #8b949e; }
+
+    .tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: #8b949e; padding: 6px 14px 10px; font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: -1px; transition: color 0.15s; }
+    .tab-btn:hover { color: #e6edf3; }
+    .tab-btn.active { color: #58a6ff; border-bottom-color: #58a6ff; }
   </style>
 </head>
 <body>
@@ -87,20 +91,78 @@
 
   <!-- Data source -->
   <div class="panel">
-    <div class="panel-title">Google Sheet Source</div>
-    <div class="source-row">
-      <input class="url-input" id="sheet-url"
-        value="https://docs.google.com/spreadsheets/d/12_orHWO8I3Pvlwy3DdDBQA_c_osO7SMUB2KO0lHBiFk/export?format=csv&gid=0"
-        placeholder="Google Sheets CSV export URL">
-      <button class="btn-primary" onclick="loadFromSheet()">Load Sheet</button>
-      <button class="btn-secondary" onclick="togglePaste()">Paste CSV instead</button>
+    <div class="panel-title">Import Roster Data</div>
+
+    <!-- Tab buttons -->
+    <div style="display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid #30363d; padding-bottom:0">
+      <button class="tab-btn active" id="tab-file"   onclick="switchTab('file')">📂 Upload CSV</button>
+      <button class="tab-btn"        id="tab-paste"  onclick="switchTab('paste')">📋 Paste from Sheets</button>
+      <button class="tab-btn"        id="tab-script" onclick="switchTab('script')">⚙ Apps Script (auto)</button>
     </div>
-    <div id="paste-section" style="display:none; margin-top:12px">
-      <textarea class="paste-area" id="csv-paste" placeholder="Paste CSV here (first row must be headers)..."></textarea>
-      <div class="paste-hint">Headers expected: Overall, Age, Seasons In Game, Career Progression (case-insensitive, extra columns are kept)</div>
-      <button class="btn-primary" style="margin-top:8px" onclick="loadFromPaste()">Apply</button>
+
+    <!-- Tab: Upload CSV -->
+    <div id="tab-file-body">
+      <p style="color:#8b949e;font-size:13px;margin-bottom:12px">
+        In Google Sheets: <strong style="color:#e6edf3">File → Download → Comma Separated Values (.csv)</strong>, then upload below. Your sheet stays private.
+      </p>
+      <div style="display:flex; gap:10px; align-items:center">
+        <label class="btn-primary" style="display:inline-block; cursor:pointer">
+          Choose CSV file
+          <input type="file" id="file-input" accept=".csv,.tsv,.txt" style="display:none" onchange="loadFromFile(this)">
+        </label>
+        <span id="file-name" style="color:#8b949e; font-size:13px"></span>
+      </div>
     </div>
-    <div id="sheet-status" class="status-bar" style="margin-top:8px"></div>
+
+    <!-- Tab: Paste -->
+    <div id="tab-paste-body" style="display:none">
+      <p style="color:#8b949e;font-size:13px;margin-bottom:12px">
+        In Google Sheets: select all cells (<strong style="color:#e6edf3">Ctrl+A</strong>), copy (<strong style="color:#e6edf3">Ctrl+C</strong>), paste below. Works with both CSV and tab-separated (TSV) format.
+      </p>
+      <textarea class="paste-area" id="csv-paste" placeholder="Paste spreadsheet content here…"></textarea>
+      <div style="display:flex; gap:10px; align-items:center; margin-top:8px">
+        <button class="btn-primary" onclick="loadFromPaste()">Apply</button>
+        <span style="color:#8b949e;font-size:12px">Headers expected: Overall, Age, Seasons In Game, Career Progression (case-insensitive)</span>
+      </div>
+    </div>
+
+    <!-- Tab: Apps Script -->
+    <div id="tab-script-body" style="display:none">
+      <p style="color:#8b949e;font-size:13px;margin-bottom:12px">
+        One-time setup: create a Google Apps Script that serves your private sheet. Once deployed, paste the URL here and data loads automatically — no CSV export needed.
+      </p>
+      <details style="margin-bottom:14px">
+        <summary style="cursor:pointer; color:#58a6ff; font-size:13px; font-weight:600">Setup instructions (click to expand)</summary>
+        <ol style="color:#8b949e; font-size:12px; margin:12px 0 0 16px; line-height:1.9">
+          <li>Open your Google Sheet → <strong style="color:#e6edf3">Extensions → Apps Script</strong></li>
+          <li>Delete any existing code and paste the script below</li>
+          <li>Click <strong style="color:#e6edf3">Deploy → New deployment</strong></li>
+          <li>Type: <strong style="color:#e6edf3">Web app</strong> · Execute as: <strong style="color:#e6edf3">Me</strong> · Who has access: <strong style="color:#e6edf3">Anyone</strong></li>
+          <li>Click <strong style="color:#e6edf3">Deploy</strong>, authorise when prompted</li>
+          <li>Copy the <strong style="color:#e6edf3">Web app URL</strong> and paste it below</li>
+        </ol>
+        <pre style="background:#0d1117;border:1px solid #30363d;border-radius:6px;padding:12px;margin-top:12px;font-size:12px;color:#3fb950;overflow-x:auto">function doGet() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data  = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var rows = data.slice(1).map(function(row) {
+    var obj = {};
+    headers.forEach(function(h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+  return ContentService
+    .createTextOutput(JSON.stringify(rows))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+        <p style="color:#8b949e;font-size:11px;margin-top:8px">⚠ "Anyone" can call this URL — treat it like a password and don't share it publicly. Your Google Sheet itself remains private.</p>
+      </details>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+        <input class="url-input" id="script-url" placeholder="https://script.google.com/macros/s/…/exec" style="flex:1; min-width:300px">
+        <button class="btn-primary" onclick="loadFromScript()">Load</button>
+      </div>
+    </div>
+
+    <div id="sheet-status" class="status-bar" style="margin-top:10px"></div>
   </div>
 
   <!-- Settings + Filters -->
@@ -163,6 +225,11 @@
 
 <script>
   const DIVISIONS = [1,2,3,4,5,6,7,8,9,10];
+  const HIDDEN_COLS = new Set([
+    'date','pace','shooting','passing','dribbling','defence','physical','gk',
+    'club id','note','floor price','average price','total listings',
+    'column 4','column 5','column 6'
+  ]);
   let allData = [];
   let rosterRows = [];   // parsed from sheet
   let projectedRows = []; // rosterRows + projection fields
@@ -171,7 +238,7 @@
   let sortDir = 'desc';
   let dataReady = false;
 
-  // ── CSV parser ────────────────────────────────────────────────────────────
+  // ── CSV / TSV parser ──────────────────────────────────────────────────────
   function parseCSVLine(line) {
     const result = [];
     let cur = '', inQ = false;
@@ -185,12 +252,15 @@
     return result;
   }
 
-  function parseCSV(text) {
+  function parseDelimited(text) {
     const lines = text.trim().split(/\r?\n/);
     if (!lines.length) return [];
-    const headers = parseCSVLine(lines[0]).map(h => h.trim());
+    // Detect TSV: if first line has tabs, split on tabs
+    const isTSV = lines[0].includes('\t');
+    const splitLine = isTSV ? l => l.split('\t').map(v => v.trim()) : parseCSVLine;
+    const headers = splitLine(lines[0]).map(h => h.trim());
     return lines.slice(1).filter(l => l.trim()).map(line => {
-      const vals = parseCSVLine(line);
+      const vals = splitLine(line);
       const row = {};
       headers.forEach((h, i) => { row[h] = (vals[i] ?? '').trim(); });
       return row;
@@ -235,51 +305,59 @@
     setSheetStatus(`Historical data ready — ${allData.length.toLocaleString()} players loaded.`, 'ok');
   }
 
-  // ── Sheet loading ─────────────────────────────────────────────────────────
-  async function loadFromSheet() {
-    const url = document.getElementById('sheet-url').value.trim();
-    if (!url) { setSheetStatus('Enter a Google Sheets CSV export URL.', 'error'); return; }
-
-    // Auto-convert edit URL to export URL
-    let fetchUrl = url;
-    const editMatch = url.match(/\/spreadsheets\/d\/([^/]+)/);
-    const gidMatch  = url.match(/[#&?]gid=(\d+)/);
-    if (editMatch && !url.includes('/export')) {
-      const id  = editMatch[1];
-      const gid = gidMatch ? gidMatch[1] : '0';
-      fetchUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
-      document.getElementById('sheet-url').value = fetchUrl;
-    }
-
-    setSheetStatus('Fetching sheet…', '');
-    try {
-      const res = await fetch(fetchUrl);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      processCSV(text);
-    } catch (e) {
-      setSheetStatus(
-        `Could not fetch sheet (${e.message}). Make sure the sheet is set to "Anyone with the link can view", then try again. Or use "Paste CSV instead".`,
-        'error'
-      );
-    }
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    ['file','paste','script'].forEach(t => {
+      document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+      document.getElementById(`tab-${t}-body`).style.display = t === tab ? '' : 'none';
+    });
   }
 
+  // ── File upload ───────────────────────────────────────────────────────────
+  function loadFromFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    document.getElementById('file-name').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = e => processDelimited(e.target.result);
+    reader.readAsText(file);
+  }
+
+  // ── Paste ─────────────────────────────────────────────────────────────────
   function loadFromPaste() {
     const text = document.getElementById('csv-paste').value.trim();
-    if (!text) { setSheetStatus('Paste some CSV content first.', 'error'); return; }
-    processCSV(text);
+    if (!text) { setSheetStatus('Paste some content first.', 'error'); return; }
+    processDelimited(text);
   }
 
-  function togglePaste() {
-    const el = document.getElementById('paste-section');
-    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  // ── Apps Script ───────────────────────────────────────────────────────────
+  async function loadFromScript() {
+    const url = document.getElementById('script-url').value.trim();
+    if (!url) { setSheetStatus('Enter your Apps Script web app URL.', 'error'); return; }
+    setSheetStatus('Fetching from Apps Script…', '');
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!Array.isArray(json)) throw new Error('Expected a JSON array from the script');
+      processJSON(json);
+    } catch (e) {
+      setSheetStatus(`Could not load from Apps Script: ${e.message}`, 'error');
+    }
   }
 
-  function processCSV(text) {
-    const rows = parseCSV(text);
-    if (!rows.length) { setSheetStatus('CSV appears empty.', 'error'); return; }
+  function processJSON(rows) {
+    if (!rows.length) { setSheetStatus('Apps Script returned no data.', 'error'); return; }
+    ingestRows(rows);
+  }
 
+  function processDelimited(text) {
+    const rows = parseDelimited(text);
+    if (!rows.length) { setSheetStatus('Content appears empty.', 'error'); return; }
+    ingestRows(rows);
+  }
+
+  function ingestRows(rows) {
     const headers = Object.keys(rows[0]);
     const ovrCol  = findCol(headers, ['overall','ovr','current ovr','current overall']);
     const ageCol  = findCol(headers, ['age','current age']);
@@ -293,20 +371,19 @@
     }
 
     const knownCols = new Set([ovrCol, ageCol, seasCol, progCol]);
-    extraCols = headers.filter(h => !knownCols.has(h));
+    extraCols = headers.filter(h => !knownCols.has(h) && !HIDDEN_COLS.has(h.toLowerCase().trim()));
 
     rosterRows = rows.map(row => ({
       _raw: row,
-      overall:    parseInt(row[ovrCol])  || 0,
-      age:        parseInt(row[ageCol])  || 0,
+      overall:       parseInt(row[ovrCol])  || 0,
+      age:           parseInt(row[ageCol])  || 0,
       seasonsInGame: parseInt(row[seasCol]) || 0,
-      careerProg: parseInt(row[progCol]) || 0,
-      // Derived
-      startOvr:   (parseInt(row[ovrCol]) || 0) - (parseInt(row[progCol]) || 0),
-      mintAge:    (parseInt(row[ageCol]) || 0) - (parseInt(row[seasCol]) || 0),
+      careerProg:    parseInt(row[progCol]) || 0,
+      startOvr:      (parseInt(row[ovrCol]) || 0) - (parseInt(row[progCol]) || 0),
+      mintAge:       (parseInt(row[ageCol]) || 0) - (parseInt(row[seasCol]) || 0),
     }));
 
-    setSheetStatus(`Sheet loaded — ${rosterRows.length} players. Running projections…`, 'ok');
+    setSheetStatus(`Loaded — ${rosterRows.length} players. Running projections…`, 'ok');
     reproject();
   }
 
