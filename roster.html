@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MFL Roster Projection</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d1117; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .top-bar { background: #161b22; border-bottom: 1px solid #30363d; padding: 10px 20px; display: flex; align-items: center; gap: 16px; }
+    .top-bar-title { font-weight: 700; font-size: 15px; color: #58a6ff; }
+    .top-bar a { color: #8b949e; font-size: 13px; }
+    .top-bar a:hover { color: #e6edf3; }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+    .panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; }
+    .panel-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; font-weight: 600; margin-bottom: 12px; }
+
+    .source-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .url-input { flex: 1; min-width: 300px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 7px 12px; font-size: 13px; font-family: monospace; }
+    .url-input:focus { outline: none; border-color: #58a6ff; }
+    .btn-primary { background: #238636; border: 1px solid #2ea043; color: #fff; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-secondary { background: #21262d; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+    .btn-secondary:hover { border-color: #8b949e; color: #e6edf3; }
+
+    .settings-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+    .setting-group { display: flex; flex-direction: column; gap: 5px; }
+    .setting-label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.4px; }
+    .setting-input { background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 80px; }
+    .setting-input:focus { outline: none; border-color: #58a6ff; }
+
+    .filter-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.4px; }
+    .filter-input { background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 110px; }
+    .filter-input:focus { outline: none; border-color: #58a6ff; }
+
+    .status-bar { font-size: 13px; color: #8b949e; padding: 8px 0; }
+    .status-bar.error { color: #f85149; }
+    .status-bar.ok { color: #3fb950; }
+    .status-bar.warn { color: #d29922; }
+
+    .table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #161b22; color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; padding: 8px 12px; text-align: left; border-bottom: 1px solid #30363d; white-space: nowrap; cursor: pointer; user-select: none; }
+    th:hover { color: #e6edf3; }
+    th .sort-icon { opacity: 0.4; margin-left: 4px; }
+    th.sorted .sort-icon { opacity: 1; color: #58a6ff; }
+    td { padding: 8px 12px; border-bottom: 1px solid #21262d; vertical-align: middle; white-space: nowrap; }
+    tr:hover td { background: #161b22; }
+    tr:last-child td { border-bottom: none; }
+
+    .proj-median { color: #3fb950; font-weight: 600; }
+    .proj-p75 { color: #58a6ff; font-weight: 600; }
+    .proj-p90 { color: #a371f7; font-weight: 600; }
+    .n-matched { color: #8b949e; font-size: 12px; }
+    .n-matched.low { color: #d29922; }
+    .n-matched.none { color: #f85149; }
+    .derived { color: #8b949e; }
+
+    .badge { display: inline-block; background: #21262d; border: 1px solid #30363d; border-radius: 4px; padding: 1px 7px; font-size: 11px; color: #8b949e; }
+
+    .paste-area { width: 100%; height: 120px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 10px 12px; font-size: 12px; font-family: monospace; resize: vertical; }
+    .paste-area:focus { outline: none; border-color: #58a6ff; }
+    .paste-hint { font-size: 11px; color: #8b949e; margin-top: 6px; }
+
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #8b949e; padding: 8px 0 0; }
+    .legend span { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    .no-data { text-align: center; padding: 48px; color: #8b949e; }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="top-bar-title">MFL Roster Projection</span>
+  <a href="index.html">← Career Progression Dashboard</a>
+</div>
+
+<div class="container">
+
+  <!-- Data source -->
+  <div class="panel">
+    <div class="panel-title">Google Sheet Source</div>
+    <div class="source-row">
+      <input class="url-input" id="sheet-url"
+        value="https://docs.google.com/spreadsheets/d/12_orHWO8I3Pvlwy3DdDBQA_c_osO7SMUB2KO0lHBiFk/export?format=csv&gid=0"
+        placeholder="Google Sheets CSV export URL">
+      <button class="btn-primary" onclick="loadFromSheet()">Load Sheet</button>
+      <button class="btn-secondary" onclick="togglePaste()">Paste CSV instead</button>
+    </div>
+    <div id="paste-section" style="display:none; margin-top:12px">
+      <textarea class="paste-area" id="csv-paste" placeholder="Paste CSV here (first row must be headers)..."></textarea>
+      <div class="paste-hint">Headers expected: Overall, Age, Seasons In Game, Career Progression (case-insensitive, extra columns are kept)</div>
+      <button class="btn-primary" style="margin-top:8px" onclick="loadFromPaste()">Apply</button>
+    </div>
+    <div id="sheet-status" class="status-bar" style="margin-top:8px"></div>
+  </div>
+
+  <!-- Settings + Filters -->
+  <div class="panel">
+    <div class="panel-title">Match Settings & Filters</div>
+    <div style="display:flex; gap:32px; flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Matching Tolerance</div>
+        <div class="settings-row">
+          <div class="setting-group">
+            <div class="setting-label">OVR ±</div>
+            <input class="setting-input" id="ovr-tol" type="number" value="2" min="0" max="10" oninput="reproject()">
+          </div>
+          <div class="setting-group">
+            <div class="setting-label">Age ±</div>
+            <input class="setting-input" id="age-tol" type="number" value="1" min="0" max="5" oninput="reproject()">
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Filter Results</div>
+        <div class="filter-row">
+          <div class="filter-group">
+            <div class="filter-label">Min Proj. Median OVR</div>
+            <input class="filter-input" id="min-median" type="number" placeholder="e.g. 70" oninput="renderTable()">
+          </div>
+          <div class="filter-group">
+            <div class="filter-label">Min Proj. Top 25% OVR</div>
+            <input class="filter-input" id="min-p75" type="number" placeholder="e.g. 75" oninput="renderTable()">
+          </div>
+          <div class="filter-group">
+            <div class="filter-label">Min Matched Players</div>
+            <input class="filter-input" id="min-matched" type="number" placeholder="e.g. 5" oninput="renderTable()">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status + Table -->
+  <div class="panel">
+    <div id="table-status" class="status-bar"></div>
+    <div class="table-wrapper" style="margin-top:10px">
+      <div class="no-data" id="no-data">Load your Google Sheet above to get started.</div>
+      <table id="roster-table" style="display:none">
+        <thead id="roster-head"></thead>
+        <tbody id="roster-body"></tbody>
+      </table>
+    </div>
+    <div class="legend" id="legend" style="display:none">
+      <span><span class="legend-dot" style="background:#3fb950"></span> Proj Median OVR</span>
+      <span><span class="legend-dot" style="background:#58a6ff"></span> Proj Top 25% OVR</span>
+      <span><span class="legend-dot" style="background:#a371f7"></span> Proj Top 10% OVR</span>
+      <span style="color:#d29922">⚠ n&lt;10: low confidence</span>
+      <span style="color:#f85149">✕ n=0: no match — widen tolerance</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const DIVISIONS = [1,2,3,4,5,6,7,8,9,10];
+  let allData = [];
+  let rosterRows = [];   // parsed from sheet
+  let projectedRows = []; // rosterRows + projection fields
+  let extraCols = [];    // columns from sheet beyond the 4 known ones
+  let sortCol = null;
+  let sortDir = 'desc';
+  let dataReady = false;
+
+  // ── CSV parser ────────────────────────────────────────────────────────────
+  function parseCSVLine(line) {
+    const result = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; continue; }
+      if (c === ',' && !inQ) { result.push(cur); cur = ''; continue; }
+      cur += c;
+    }
+    result.push(cur);
+    return result;
+  }
+
+  function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (!lines.length) return [];
+    const headers = parseCSVLine(lines[0]).map(h => h.trim());
+    return lines.slice(1).filter(l => l.trim()).map(line => {
+      const vals = parseCSVLine(line);
+      const row = {};
+      headers.forEach((h, i) => { row[h] = (vals[i] ?? '').trim(); });
+      return row;
+    });
+  }
+
+  function findCol(headers, candidates) {
+    const lower = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    for (const c of candidates) {
+      const idx = lower.indexOf(c.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      if (idx !== -1) return headers[idx];
+    }
+    return null;
+  }
+
+  // ── Percentile ────────────────────────────────────────────────────────────
+  function pct(sorted, p) {
+    if (!sorted.length) return null;
+    const idx = (p / 100) * (sorted.length - 1);
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    return Math.round(lo === hi ? sorted[lo] : sorted[lo] + (idx - lo) * (sorted[hi] - sorted[lo]));
+  }
+
+  // ── Load historical data ──────────────────────────────────────────────────
+  async function loadHistoricalData() {
+    const ts = Date.now();
+    setSheetStatus('Loading historical data…', '');
+    const results = await Promise.all(
+      DIVISIONS.map(d =>
+        fetch(`data-d${d}.json?_=${ts}`).then(r => r.ok ? r.json() : null).catch(() => null)
+      )
+    );
+    const playerMap = new Map();
+    results.forEach(json => {
+      if (!json) return;
+      for (const p of (json.players ?? [])) {
+        if (!playerMap.has(p.playerId)) playerMap.set(p.playerId, p);
+      }
+    });
+    allData = [...playerMap.values()];
+    dataReady = true;
+    setSheetStatus(`Historical data ready — ${allData.length.toLocaleString()} players loaded.`, 'ok');
+  }
+
+  // ── Sheet loading ─────────────────────────────────────────────────────────
+  async function loadFromSheet() {
+    const url = document.getElementById('sheet-url').value.trim();
+    if (!url) { setSheetStatus('Enter a Google Sheets CSV export URL.', 'error'); return; }
+
+    // Auto-convert edit URL to export URL
+    let fetchUrl = url;
+    const editMatch = url.match(/\/spreadsheets\/d\/([^/]+)/);
+    const gidMatch  = url.match(/[#&?]gid=(\d+)/);
+    if (editMatch && !url.includes('/export')) {
+      const id  = editMatch[1];
+      const gid = gidMatch ? gidMatch[1] : '0';
+      fetchUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+      document.getElementById('sheet-url').value = fetchUrl;
+    }
+
+    setSheetStatus('Fetching sheet…', '');
+    try {
+      const res = await fetch(fetchUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      processCSV(text);
+    } catch (e) {
+      setSheetStatus(
+        `Could not fetch sheet (${e.message}). Make sure the sheet is set to "Anyone with the link can view", then try again. Or use "Paste CSV instead".`,
+        'error'
+      );
+    }
+  }
+
+  function loadFromPaste() {
+    const text = document.getElementById('csv-paste').value.trim();
+    if (!text) { setSheetStatus('Paste some CSV content first.', 'error'); return; }
+    processCSV(text);
+  }
+
+  function togglePaste() {
+    const el = document.getElementById('paste-section');
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function processCSV(text) {
+    const rows = parseCSV(text);
+    if (!rows.length) { setSheetStatus('CSV appears empty.', 'error'); return; }
+
+    const headers = Object.keys(rows[0]);
+    const ovrCol  = findCol(headers, ['overall','ovr','current ovr','current overall']);
+    const ageCol  = findCol(headers, ['age','current age']);
+    const seasCol = findCol(headers, ['seasons in game','seasons','season','seasons played']);
+    const progCol = findCol(headers, ['career progression','career progress','progression','progress','career growth','careerGrowth']);
+
+    const missing = [!ovrCol && 'Overall', !ageCol && 'Age', !seasCol && 'Seasons In Game', !progCol && 'Career Progression'].filter(Boolean);
+    if (missing.length) {
+      setSheetStatus(`Could not find columns: ${missing.join(', ')}. Headers found: ${headers.join(', ')}`, 'error');
+      return;
+    }
+
+    const knownCols = new Set([ovrCol, ageCol, seasCol, progCol]);
+    extraCols = headers.filter(h => !knownCols.has(h));
+
+    rosterRows = rows.map(row => ({
+      _raw: row,
+      overall:    parseInt(row[ovrCol])  || 0,
+      age:        parseInt(row[ageCol])  || 0,
+      seasonsInGame: parseInt(row[seasCol]) || 0,
+      careerProg: parseInt(row[progCol]) || 0,
+      // Derived
+      startOvr:   (parseInt(row[ovrCol]) || 0) - (parseInt(row[progCol]) || 0),
+      mintAge:    (parseInt(row[ageCol]) || 0) - (parseInt(row[seasCol]) || 0),
+    }));
+
+    setSheetStatus(`Sheet loaded — ${rosterRows.length} players. Running projections…`, 'ok');
+    reproject();
+  }
+
+  // ── Projection ────────────────────────────────────────────────────────────
+  function projectPlayer(player, ovrTol, ageTol) {
+    const { startOvr, mintAge } = player;
+    const matched = allData.filter(p =>
+      Math.abs((p.startOvr ?? 0) - startOvr) <= ovrTol &&
+      Math.abs((p.mintAge  ?? 0) - mintAge)  <= ageTol
+    );
+    if (!matched.length) return { n: 0, medianOvr: null, p75Ovr: null, p90Ovr: null, medianGrowth: null, p75Growth: null };
+    const fovrs   = matched.map(p => p.currentOvr   ?? 0).sort((a,b)=>a-b);
+    const growths = matched.map(p => p.careerGrowth  ?? 0).sort((a,b)=>a-b);
+    return {
+      n:            matched.length,
+      medianOvr:    pct(fovrs,   50),
+      p75Ovr:       pct(fovrs,   75),
+      p90Ovr:       pct(fovrs,   90),
+      medianGrowth: pct(growths, 50),
+      p75Growth:    pct(growths, 75),
+    };
+  }
+
+  function reproject() {
+    if (!rosterRows.length) return;
+    const ovrTol = parseInt(document.getElementById('ovr-tol').value) || 2;
+    const ageTol = parseInt(document.getElementById('age-tol').value) || 1;
+    projectedRows = rosterRows.map(r => ({ ...r, proj: projectPlayer(r, ovrTol, ageTol) }));
+    renderTable();
+  }
+
+  // ── Table rendering ───────────────────────────────────────────────────────
+  const PROJ_COLS = [
+    { key: 'proj.n',            label: 'Matched',         title: 'Historical players with similar start OVR & mint age' },
+    { key: 'proj.medianOvr',    label: 'Proj Median OVR', title: 'Median final OVR of matched historical players' },
+    { key: 'proj.p75Ovr',       label: 'Proj Top 25% OVR',title: 'Top 25% final OVR threshold (P75) of matched players' },
+    { key: 'proj.p90Ovr',       label: 'Proj Top 10% OVR',title: 'Top 10% final OVR threshold (P90) of matched players' },
+    { key: 'proj.medianGrowth', label: 'Proj Median +OVR', title: 'Median career growth of matched historical players' },
+  ];
+
+  const FIXED_COLS = [
+    { key: 'overall',      label: 'Current OVR' },
+    { key: 'age',          label: 'Age' },
+    { key: 'seasonsInGame',label: 'Seasons' },
+    { key: 'careerProg',   label: 'Career +OVR' },
+    { key: 'startOvr',     label: 'Start OVR', derived: true },
+    { key: 'mintAge',      label: 'Mint Age',  derived: true },
+  ];
+
+  function getVal(row, key) {
+    if (key.startsWith('proj.')) return row.proj?.[key.slice(5)] ?? null;
+    if (key.startsWith('extra.')) return row._raw?.[key.slice(6)] ?? '';
+    return row[key] ?? null;
+  }
+
+  function renderTable() {
+    const minMedian  = parseInt(document.getElementById('min-median').value)  || null;
+    const minP75     = parseInt(document.getElementById('min-p75').value)     || null;
+    const minMatched = parseInt(document.getElementById('min-matched').value) || null;
+
+    let filtered = projectedRows.filter(r => {
+      if (minMedian  && (r.proj.medianOvr ?? 0) < minMedian)  return false;
+      if (minP75     && (r.proj.p75Ovr    ?? 0) < minP75)     return false;
+      if (minMatched && (r.proj.n         ?? 0) < minMatched)  return false;
+      return true;
+    });
+
+    if (sortCol) {
+      filtered.sort((a, b) => {
+        const av = getVal(a, sortCol) ?? -Infinity;
+        const bv = getVal(b, sortCol) ?? -Infinity;
+        return sortDir === 'asc' ? av - bv : bv - av;
+      });
+    }
+
+    const allCols = [
+      ...extraCols.map(k => ({ key: `extra.${k}`, label: k })),
+      ...FIXED_COLS,
+      ...PROJ_COLS,
+    ];
+
+    // Header
+    document.getElementById('roster-head').innerHTML = `<tr>${
+      allCols.map(c => {
+        const sorted = sortCol === c.key;
+        const icon = sorted ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
+        return `<th class="${sorted?'sorted':''}" onclick="setSort('${c.key}')" title="${c.title||''}">${c.label} <span class="sort-icon">${icon}</span></th>`;
+      }).join('')
+    }</tr>`;
+
+    // Body
+    document.getElementById('roster-body').innerHTML = filtered.map(r => {
+      const { proj } = r;
+      return `<tr>${allCols.map(c => {
+        if (c.key === 'proj.n') {
+          const cls = proj.n === 0 ? 'none' : proj.n < 10 ? 'low' : '';
+          return `<td><span class="n-matched ${cls}">${proj.n}</span></td>`;
+        }
+        if (c.key === 'proj.medianOvr')    return `<td class="proj-median">${proj.medianOvr ?? '—'}</td>`;
+        if (c.key === 'proj.p75Ovr')       return `<td class="proj-p75">${proj.p75Ovr ?? '—'}</td>`;
+        if (c.key === 'proj.p90Ovr')       return `<td class="proj-p90">${proj.p90Ovr ?? '—'}</td>`;
+        if (c.key === 'proj.medianGrowth') {
+          const v = proj.medianGrowth;
+          return `<td class="proj-median">${v != null ? (v >= 0 ? '+' : '') + v : '—'}</td>`;
+        }
+        if (c.key === 'startOvr' || c.key === 'mintAge') {
+          return `<td class="derived">${r[c.key]}</td>`;
+        }
+        if (c.key.startsWith('extra.')) return `<td>${r._raw[c.key.slice(6)] ?? ''}</td>`;
+        const v = r[c.key];
+        return `<td>${v ?? ''}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+
+    document.getElementById('roster-table').style.display = filtered.length ? '' : 'none';
+    document.getElementById('no-data').style.display = filtered.length ? 'none' : '';
+    if (!filtered.length && projectedRows.length) {
+      document.getElementById('no-data').textContent = 'No players match the current filters.';
+    }
+    document.getElementById('legend').style.display = projectedRows.length ? '' : 'none';
+
+    const total = projectedRows.length;
+    document.getElementById('table-status').textContent =
+      `Showing ${filtered.length} of ${total} players`;
+    document.getElementById('table-status').className = 'status-bar';
+  }
+
+  function setSort(col) {
+    if (sortCol === col) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortCol = col; sortDir = 'desc'; }
+    renderTable();
+  }
+
+  // ── Status helper ─────────────────────────────────────────────────────────
+  function setSheetStatus(msg, type) {
+    const el = document.getElementById('sheet-status');
+    el.textContent = msg;
+    el.className = `status-bar ${type}`;
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  loadHistoricalData();
+</script>
+</body>
+</html>
