@@ -19,26 +19,23 @@
 
     .panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; }
     .panel-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8b949e; font-weight: 600; margin-bottom: 12px; }
+    .section-label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 10px; }
 
     .source-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
     .url-input { flex: 1; min-width: 300px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 7px 12px; font-size: 13px; font-family: monospace; }
     .url-input:focus { outline: none; border-color: #58a6ff; }
     .btn-primary { background: #238636; border: 1px solid #2ea043; color: #fff; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
     .btn-primary:hover { background: #2ea043; }
-    .btn-secondary { background: #21262d; border: 1px solid #30363d; color: #8b949e; border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; white-space: nowrap; }
-    .btn-secondary:hover { border-color: #8b949e; color: #e6edf3; }
 
-    .settings-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
-    .setting-group { display: flex; flex-direction: column; gap: 5px; }
-    .setting-label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.4px; }
-    .setting-input { background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 80px; }
-    .setting-input:focus { outline: none; border-color: #58a6ff; }
-
-    .filter-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
-    .filter-group { display: flex; flex-direction: column; gap: 5px; }
-    .filter-label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.4px; }
-    .filter-input { background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 6px 10px; font-size: 13px; width: 110px; }
-    .filter-input:focus { outline: none; border-color: #58a6ff; }
+    /* Stepper controls */
+    .step-group { display: flex; flex-direction: column; gap: 6px; }
+    .step-label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.4px; }
+    .step-row { display: flex; align-items: center; gap: 4px; }
+    .step-btn { background: #21262d; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; width: 34px; height: 34px; font-size: 18px; font-weight: 400; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; line-height: 1; }
+    .step-btn:hover { background: #30363d; border-color: #8b949e; }
+    .step-val { background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; height: 34px; width: 54px; text-align: center; font-size: 13px; font-family: inherit; -moz-appearance: textfield; }
+    .step-val::-webkit-outer-spin-button, .step-val::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .step-val:focus { outline: none; border-color: #58a6ff; }
 
     .status-bar { font-size: 13px; color: #8b949e; padding: 8px 0; }
     .status-bar.error { color: #f85149; }
@@ -63,17 +60,15 @@
     .n-matched.none { color: #f85149; }
     .derived { color: #8b949e; }
 
-    .badge { display: inline-block; background: #21262d; border: 1px solid #30363d; border-radius: 4px; padding: 1px 7px; font-size: 11px; color: #8b949e; }
-
-    .paste-area { width: 100%; height: 120px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3; border-radius: 6px; padding: 10px 12px; font-size: 12px; font-family: monospace; resize: vertical; }
-    .paste-area:focus { outline: none; border-color: #58a6ff; }
-    .paste-hint { font-size: 11px; color: #8b949e; margin-top: 6px; }
-
     .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: #8b949e; padding: 8px 0 0; }
     .legend span { display: flex; align-items: center; gap: 5px; }
     .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
 
     .no-data { text-align: center; padding: 48px; color: #8b949e; }
+
+    .toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; height: 34px; white-space: nowrap; }
+    .toggle-label input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: #238636; }
+    .toggle-label span { font-size: 13px; color: #e6edf3; }
   </style>
 </head>
 <body>
@@ -98,44 +93,127 @@
   <!-- Settings + Filters -->
   <div class="panel">
     <div class="panel-title">Match Settings & Filters</div>
-    <div style="display:flex; gap:32px; flex-wrap:wrap">
+    <div style="display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start">
+
+      <!-- Matching Tolerance -->
       <div>
-        <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Matching Tolerance</div>
-        <div class="settings-row">
-          <div class="setting-group">
-            <div class="setting-label">OVR ±</div>
-            <input class="setting-input" id="ovr-tol" type="number" value="2" min="0" max="10" oninput="reproject()">
+        <div class="section-label">Matching Tolerance</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap">
+          <div class="step-group">
+            <div class="step-label">OVR ±</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepVal('ovr-tol',-1,0,10)">−</button>
+              <input class="step-val" id="ovr-tol" type="number" value="2" oninput="reproject()">
+              <button class="step-btn" onclick="stepVal('ovr-tol',1,0,10)">+</button>
+            </div>
           </div>
-          <div class="setting-group">
-            <div class="setting-label">Age ±</div>
-            <input class="setting-input" id="age-tol" type="number" value="1" min="0" max="5" oninput="reproject()">
+          <div class="step-group">
+            <div class="step-label">Age ±</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepVal('age-tol',-1,0,5)">−</button>
+              <input class="step-val" id="age-tol" type="number" value="1" oninput="reproject()">
+              <button class="step-btn" onclick="stepVal('age-tol',1,0,5)">+</button>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Projection Filters -->
       <div>
-        <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Filter Results</div>
-        <div class="filter-row">
-          <div class="filter-group">
-            <div class="filter-label">Min Proj. Median OVR</div>
-            <input class="filter-input" id="min-median" type="number" placeholder="e.g. 70" oninput="renderTable()">
+        <div class="section-label">Projection Filters</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap">
+          <div class="step-group">
+            <div class="step-label">Min Median OVR</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepOptVal('min-median',-1)">−</button>
+              <input class="step-val" id="min-median" type="number" placeholder="—" oninput="renderTable()">
+              <button class="step-btn" onclick="stepOptVal('min-median',1)">+</button>
+            </div>
           </div>
-          <div class="filter-group">
-            <div class="filter-label">Min Proj. Top 25% OVR</div>
-            <input class="filter-input" id="min-p75" type="number" placeholder="e.g. 75" oninput="renderTable()">
+          <div class="step-group">
+            <div class="step-label">Min Top 25% OVR</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepOptVal('min-p75',-1)">−</button>
+              <input class="step-val" id="min-p75" type="number" placeholder="—" oninput="renderTable()">
+              <button class="step-btn" onclick="stepOptVal('min-p75',1)">+</button>
+            </div>
           </div>
-          <div class="filter-group">
-            <div class="filter-label">Min Matched Players</div>
-            <input class="filter-input" id="min-matched" type="number" placeholder="e.g. 5" oninput="renderTable()">
+          <div class="step-group">
+            <div class="step-label">Min Matched</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepOptVal('min-matched',-1)">−</button>
+              <input class="step-val" id="min-matched" type="number" placeholder="—" oninput="renderTable()">
+              <button class="step-btn" onclick="stepOptVal('min-matched',1)">+</button>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Player Filters -->
+      <div>
+        <div class="section-label">Player Filters</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end">
+          <div class="step-group">
+            <div class="step-label">Max Age</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepOptVal('max-age',-1)">−</button>
+              <input class="step-val" id="max-age" type="number" placeholder="—" oninput="renderTable()">
+              <button class="step-btn" onclick="stepOptVal('max-age',1)">+</button>
+            </div>
+          </div>
+          <div class="step-group">
+            <div class="step-label">Min Seasons</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepOptVal('min-seasons',-1)">−</button>
+              <input class="step-val" id="min-seasons" type="number" placeholder="—" oninput="renderTable()">
+              <button class="step-btn" onclick="stepOptVal('min-seasons',1)">+</button>
+            </div>
+          </div>
+          <div class="step-group">
+            <div class="step-label">Max Seasons</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepOptVal('max-seasons',-1)">−</button>
+              <input class="step-val" id="max-seasons" type="number" placeholder="—" oninput="renderTable()">
+              <button class="step-btn" onclick="stepOptVal('max-seasons',1)">+</button>
+            </div>
+          </div>
+          <div class="step-group">
+            <div class="step-label">Min Career Prog</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepOptVal('min-cprog',-1)">−</button>
+              <input class="step-val" id="min-cprog" type="number" placeholder="—" oninput="renderTable()">
+              <button class="step-btn" onclick="stepOptVal('min-cprog',1)">+</button>
+            </div>
+          </div>
+          <div class="step-group">
+            <div class="step-label">Max Career Prog</div>
+            <div class="step-row">
+              <button class="step-btn" onclick="stepOptVal('max-cprog',-1)">−</button>
+              <input class="step-val" id="max-cprog" type="number" placeholder="—" oninput="renderTable()">
+              <button class="step-btn" onclick="stepOptVal('max-cprog',1)">+</button>
+            </div>
+          </div>
+          <div class="step-group">
+            <div class="step-label">&nbsp;</div>
+            <label class="toggle-label">
+              <input type="checkbox" id="listed-only" onchange="renderTable()">
+              <span>Listed players only</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <!-- Status + Table -->
   <div class="panel">
     <div id="table-status" class="status-bar"></div>
-    <div class="table-wrapper" style="margin-top:10px">
+    <!-- Top scrollbar mirror -->
+    <div id="scroll-top" style="overflow-x:auto; overflow-y:hidden; height:14px; margin-top:6px; display:none">
+      <div id="scroll-top-inner" style="height:1px"></div>
+    </div>
+    <div class="table-wrapper" id="table-scroll" style="margin-top:4px">
       <div class="no-data" id="no-data">Load your Google Sheet above to get started.</div>
       <table id="roster-table" style="display:none">
         <thead id="roster-head"></thead>
@@ -157,16 +235,43 @@
   const DIVISIONS = [1,2,3,4,5,6,7,8,9,10];
   const HIDDEN_COLS = new Set([
     'date','pace','shooting','passing','dribbling','defence','physical','gk',
-    'club id','note','floor price','average price','total listings',
-    'column 4','column 5','column 6'
+    'club id','note','notes','floor price','average price','total listings',
+    'column 4','column 5','column 6','progression','player id','player_id','playerid'
   ]);
+
   let allData = [];
-  let rosterRows = [];   // parsed from sheet
-  let projectedRows = []; // rosterRows + projection fields
-  let extraCols = [];    // columns from sheet beyond the 4 known ones
+  let rosterRows = [];
+  let projectedRows = [];
+  let extraCols = [];
+  let listingCol = null;
   let sortCol = null;
   let sortDir = 'desc';
-  let dataReady = false;
+
+  // ── Stepper helpers ───────────────────────────────────────────────────────
+  function stepVal(id, delta, min = null, max = null) {
+    const el = document.getElementById(id);
+    let next = (parseInt(el.value) || 0) + delta;
+    if (min !== null) next = Math.max(min, next);
+    if (max !== null) next = Math.min(max, next);
+    el.value = next;
+    el.dispatchEvent(new Event('input'));
+  }
+
+  function stepOptVal(id, delta) {
+    const el = document.getElementById(id);
+    if (el.value === '') {
+      if (delta > 0) { el.value = 1; el.dispatchEvent(new Event('input')); }
+      return;
+    }
+    const next = (parseInt(el.value) || 0) + delta;
+    el.value = next < 0 ? '' : next;
+    el.dispatchEvent(new Event('input'));
+  }
+
+  function optInt(id) {
+    const v = document.getElementById(id).value;
+    return v === '' ? null : (parseInt(v) ?? null);
+  }
 
   // ── CSV / TSV parser ──────────────────────────────────────────────────────
   function parseCSVLine(line) {
@@ -185,7 +290,6 @@
   function parseDelimited(text) {
     const lines = text.trim().split(/\r?\n/);
     if (!lines.length) return [];
-    // Detect TSV: if first line has tabs, split on tabs
     const isTSV = lines[0].includes('\t');
     const splitLine = isTSV ? l => l.split('\t').map(v => v.trim()) : parseCSVLine;
     const headers = splitLine(lines[0]).map(h => h.trim());
@@ -231,7 +335,6 @@
       }
     });
     allData = [...playerMap.values()];
-    dataReady = true;
     setSheetStatus(`Historical data ready — ${allData.length.toLocaleString()} players loaded.`, 'ok');
   }
 
@@ -240,7 +343,6 @@
     const url = document.getElementById('sheet-url').value.trim();
     if (!url) { setSheetStatus('Enter a Google Sheets URL.', 'error'); return; }
 
-    // Auto-convert edit/view URL to CSV export URL
     let fetchUrl = url;
     const editMatch = url.match(/\/spreadsheets\/d\/([^/]+)/);
     const gidMatch  = url.match(/[#&?]gid=(\d+)/);
@@ -268,13 +370,16 @@
     const ovrCol  = findCol(headers, ['overall','ovr','current ovr','current overall']);
     const ageCol  = findCol(headers, ['age','current age']);
     const seasCol = findCol(headers, ['seasons in game','seasons','season','seasons played']);
-    const progCol = findCol(headers, ['career progression','career progress','progression','progress','career growth','careerGrowth']);
+    const progCol = findCol(headers, ['career progression','career progress','career growth','careerGrowth']);
 
     const missing = [!ovrCol && 'Overall', !ageCol && 'Age', !seasCol && 'Seasons In Game', !progCol && 'Career Progression'].filter(Boolean);
     if (missing.length) {
       setSheetStatus(`Could not find columns: ${missing.join(', ')}. Headers found: ${headers.join(', ')}`, 'error');
       return;
     }
+
+    // Detect listing column: first column where any row has "Not Listed"
+    listingCol = headers.find(h => rows.some(r => (r[h] ?? '').toString().trim().toLowerCase() === 'not listed')) ?? null;
 
     const knownCols = new Set([ovrCol, ageCol, seasCol, progCol]);
     extraCols = headers.filter(h => !knownCols.has(h) && !HIDDEN_COLS.has(h.toLowerCase().trim()));
@@ -301,8 +406,8 @@
       Math.abs((p.mintAge  ?? 0) - mintAge)  <= ageTol
     );
     if (!matched.length) return { n: 0, medianOvr: null, p75Ovr: null, p90Ovr: null, medianGrowth: null, p75Growth: null };
-    const fovrs   = matched.map(p => p.currentOvr   ?? 0).sort((a,b)=>a-b);
-    const growths = matched.map(p => p.careerGrowth  ?? 0).sort((a,b)=>a-b);
+    const fovrs   = matched.map(p => p.currentOvr  ?? 0).sort((a,b)=>a-b);
+    const growths = matched.map(p => p.careerGrowth ?? 0).sort((a,b)=>a-b);
     return {
       n:            matched.length,
       medianOvr:    pct(fovrs,   50),
@@ -323,37 +428,52 @@
 
   // ── Table rendering ───────────────────────────────────────────────────────
   const PROJ_COLS = [
-    { key: 'proj.n',            label: 'Matched',         title: 'Historical players with similar start OVR & mint age' },
-    { key: 'proj.medianOvr',    label: 'Proj Median OVR', title: 'Median final OVR of matched historical players' },
-    { key: 'proj.p75Ovr',       label: 'Proj Top 25% OVR',title: 'Top 25% final OVR threshold (P75) of matched players' },
-    { key: 'proj.p90Ovr',       label: 'Proj Top 10% OVR',title: 'Top 10% final OVR threshold (P90) of matched players' },
+    { key: 'proj.n',            label: 'Matched',          title: 'Historical players with similar start OVR & mint age' },
+    { key: 'proj.medianOvr',    label: 'Proj Median OVR',  title: 'Median final OVR of matched historical players' },
+    { key: 'proj.p75Ovr',       label: 'Proj Top 25% OVR', title: 'Top 25% final OVR threshold (P75) of matched players' },
+    { key: 'proj.p90Ovr',       label: 'Proj Top 10% OVR', title: 'Top 10% final OVR threshold (P90) of matched players' },
     { key: 'proj.medianGrowth', label: 'Proj Median +OVR', title: 'Median career growth of matched historical players' },
   ];
 
   const FIXED_COLS = [
-    { key: 'overall',      label: 'Current OVR' },
-    { key: 'age',          label: 'Age' },
-    { key: 'seasonsInGame',label: 'Seasons' },
-    { key: 'careerProg',   label: 'Career +OVR' },
-    { key: 'startOvr',     label: 'Start OVR', derived: true },
-    { key: 'mintAge',      label: 'Mint Age',  derived: true },
+    { key: 'overall',       label: 'Current OVR' },
+    { key: 'age',           label: 'Age' },
+    { key: 'seasonsInGame', label: 'Seasons' },
+    { key: 'careerProg',    label: 'Career +OVR' },
+    { key: 'startOvr',      label: 'Start OVR', derived: true },
+    { key: 'mintAge',       label: 'Mint Age',  derived: true },
   ];
 
   function getVal(row, key) {
-    if (key.startsWith('proj.')) return row.proj?.[key.slice(5)] ?? null;
+    if (key.startsWith('proj.'))  return row.proj?.[key.slice(5)] ?? null;
     if (key.startsWith('extra.')) return row._raw?.[key.slice(6)] ?? '';
     return row[key] ?? null;
   }
 
   function renderTable() {
-    const minMedian  = parseInt(document.getElementById('min-median').value)  || null;
-    const minP75     = parseInt(document.getElementById('min-p75').value)     || null;
-    const minMatched = parseInt(document.getElementById('min-matched').value) || null;
+    const minMedian  = optInt('min-median');
+    const minP75     = optInt('min-p75');
+    const minMatched = optInt('min-matched');
+    const maxAge     = optInt('max-age');
+    const minSeasons = optInt('min-seasons');
+    const maxSeasons = optInt('max-seasons');
+    const minCprog   = optInt('min-cprog');
+    const maxCprog   = optInt('max-cprog');
+    const listedOnly = document.getElementById('listed-only').checked;
 
     let filtered = projectedRows.filter(r => {
-      if (minMedian  && (r.proj.medianOvr ?? 0) < minMedian)  return false;
-      if (minP75     && (r.proj.p75Ovr    ?? 0) < minP75)     return false;
-      if (minMatched && (r.proj.n         ?? 0) < minMatched)  return false;
+      if (minMedian  !== null && (r.proj.medianOvr ?? 0) < minMedian)  return false;
+      if (minP75     !== null && (r.proj.p75Ovr    ?? 0) < minP75)     return false;
+      if (minMatched !== null && (r.proj.n         ?? 0) < minMatched)  return false;
+      if (maxAge     !== null && r.age > maxAge)                         return false;
+      if (minSeasons !== null && r.seasonsInGame < minSeasons)           return false;
+      if (maxSeasons !== null && r.seasonsInGame > maxSeasons)           return false;
+      if (minCprog   !== null && r.careerProg < minCprog)                return false;
+      if (maxCprog   !== null && r.careerProg > maxCprog)                return false;
+      if (listedOnly && listingCol) {
+        const val = (r._raw[listingCol] ?? '').toString().trim().toLowerCase();
+        if (val === 'not listed') return false;
+      }
       return true;
     });
 
@@ -371,7 +491,6 @@
       ...PROJ_COLS,
     ];
 
-    // Header
     document.getElementById('roster-head').innerHTML = `<tr>${
       allCols.map(c => {
         const sorted = sortCol === c.key;
@@ -380,7 +499,6 @@
       }).join('')
     }</tr>`;
 
-    // Body
     document.getElementById('roster-body').innerHTML = filtered.map(r => {
       const { proj } = r;
       return `<tr>${allCols.map(c => {
@@ -395,26 +513,31 @@
           const v = proj.medianGrowth;
           return `<td class="proj-median">${v != null ? (v >= 0 ? '+' : '') + v : '—'}</td>`;
         }
-        if (c.key === 'startOvr' || c.key === 'mintAge') {
-          return `<td class="derived">${r[c.key]}</td>`;
-        }
+        if (c.key === 'startOvr' || c.key === 'mintAge') return `<td class="derived">${r[c.key]}</td>`;
         if (c.key.startsWith('extra.')) return `<td>${r._raw[c.key.slice(6)] ?? ''}</td>`;
-        const v = r[c.key];
-        return `<td>${v ?? ''}</td>`;
+        return `<td>${r[c.key] ?? ''}</td>`;
       }).join('')}</tr>`;
     }).join('');
 
-    document.getElementById('roster-table').style.display = filtered.length ? '' : 'none';
-    document.getElementById('no-data').style.display = filtered.length ? 'none' : '';
-    if (!filtered.length && projectedRows.length) {
+    const show = filtered.length > 0;
+    document.getElementById('roster-table').style.display = show ? '' : 'none';
+    document.getElementById('no-data').style.display = show ? 'none' : '';
+    if (!show && projectedRows.length) {
       document.getElementById('no-data').textContent = 'No players match the current filters.';
     }
     document.getElementById('legend').style.display = projectedRows.length ? '' : 'none';
-
-    const total = projectedRows.length;
     document.getElementById('table-status').textContent =
-      `Showing ${filtered.length} of ${total} players`;
+      `Showing ${filtered.length} of ${projectedRows.length} players`;
     document.getElementById('table-status').className = 'status-bar';
+
+    // Sync top scrollbar width after layout
+    setTimeout(() => {
+      const table = document.getElementById('roster-table');
+      const scrollTop = document.getElementById('scroll-top');
+      const inner = document.getElementById('scroll-top-inner');
+      scrollTop.style.display = show ? '' : 'none';
+      if (show) inner.style.width = table.scrollWidth + 'px';
+    }, 0);
   }
 
   function setSort(col) {
@@ -423,7 +546,6 @@
     renderTable();
   }
 
-  // ── Status helper ─────────────────────────────────────────────────────────
   function setSheetStatus(msg, type) {
     const el = document.getElementById('sheet-status');
     el.textContent = msg;
@@ -431,6 +553,12 @@
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
+  // Sync top/bottom scrollbars
+  const scrollTopEl  = document.getElementById('scroll-top');
+  const tableScrollEl = document.getElementById('table-scroll');
+  scrollTopEl.addEventListener('scroll',  () => { tableScrollEl.scrollLeft = scrollTopEl.scrollLeft; });
+  tableScrollEl.addEventListener('scroll', () => { scrollTopEl.scrollLeft = tableScrollEl.scrollLeft; });
+
   loadHistoricalData();
 </script>
 </body>
